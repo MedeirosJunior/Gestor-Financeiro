@@ -2840,6 +2840,17 @@ button.loading .spinner {
   box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
 }
 
+.export-btn.pdf {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+}
+
+.export-btn.pdf:hover {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+}
+
 /* Melhorias nos filtros para acomodar botão de exportação */
 .filters {
   display: flex;
@@ -2857,7 +2868,7 @@ button.loading .spinner {
   font-size: 14px;
 }
 
-.filters .export-btn {
+.filters .export-btn.excel {
   margin-left: auto;
 }
 

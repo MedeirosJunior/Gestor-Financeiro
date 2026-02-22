@@ -5,6 +5,8 @@ import './professional.css';
 import config from './config';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
@@ -3514,6 +3516,126 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
     }
   };
 
+  // Função para exportar para PDF
+  const exportToPDF = async (mode = 'monthly') => {
+    setLoadingExport(true);
+    try {
+      const doc = new jsPDF();
+      const pageW = doc.internal.pageSize.getWidth();
+
+      if (mode === 'monthly') {
+        if (!monthlyData || monthlyData.length === 0) {
+          toast.error('Não há dados para exportar!');
+          return;
+        }
+
+        // Cabeçalho
+        doc.setFontSize(18);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Relatório Financeiro', pageW / 2, 18, { align: 'center' });
+        doc.setFontSize(11);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Período: ${selectedMonth}`, pageW / 2, 26, { align: 'center' });
+
+        // Resumo
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Resumo do Mês', 14, 38);
+        autoTable(doc, {
+          startY: 42,
+          head: [['', 'Valor (R$)']],
+          body: [
+            ['💵 Entradas', `R$ ${totalEntradas.toFixed(2)}`],
+            ['💸 Despesas', `R$ ${totalDespesas.toFixed(2)}`],
+            ['💰 Saldo', `R$ ${(totalEntradas - totalDespesas).toFixed(2)}`]
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [99, 102, 241] },
+          columnStyles: { 1: { halign: 'right' } },
+          margin: { left: 14, right: 14 }
+        });
+
+        // Tabela de transações
+        doc.text('Transações do Mês', 14, doc.lastAutoTable.finalY + 12);
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 16,
+          head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']],
+          body: monthlyData.map(t => [
+            new Date(t.date).toLocaleDateString('pt-BR'),
+            t.description,
+            t.category,
+            t.type === 'entrada' ? 'Entrada' : 'Despesa',
+            `R$ ${parseFloat(t.value).toFixed(2)}`
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [99, 102, 241] },
+          columnStyles: { 4: { halign: 'right' } },
+          margin: { left: 14, right: 14 }
+        });
+
+        // Gastos por categoria (se existir)
+        if (Object.keys(categoriesData).length > 0) {
+          const sortedCats = Object.entries(categoriesData).sort((a, b) => b[1] - a[1]);
+          doc.text('Gastos por Categoria', 14, doc.lastAutoTable.finalY + 12);
+          autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 16,
+            head: [['Categoria', 'Valor (R$)', 'Percentual']],
+            body: sortedCats.map(([cat, val]) => [
+              cat,
+              `R$ ${val.toFixed(2)}`,
+              `${totalDespesas > 0 ? ((val / totalDespesas) * 100).toFixed(1) : 0}%`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [239, 68, 68] },
+            columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+            margin: { left: 14, right: 14 }
+          });
+        }
+
+        doc.save(`relatorio-financeiro-${selectedMonth}.pdf`);
+
+      } else {
+        // Modo anual
+        doc.setFontSize(18);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Relatório Anual', pageW / 2, 18, { align: 'center' });
+        doc.setFontSize(11);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Ano: ${selectedYear}`, pageW / 2, 26, { align: 'center' });
+
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Resumo — ${selectedYear}`, 14, 38);
+        autoTable(doc, {
+          startY: 42,
+          head: [['Mês', 'Entradas (R$)', 'Despesas (R$)', 'Saldo (R$)']],
+          body: [
+            ...annualData.map(r => [
+              r.mes,
+              `R$ ${r.entradas.toFixed(2)}`,
+              `R$ ${r.despesas.toFixed(2)}`,
+              `R$ ${r.saldo.toFixed(2)}`
+            ]),
+            ['Total', `R$ ${annualTotals.entradas.toFixed(2)}`, `R$ ${annualTotals.despesas.toFixed(2)}`, `R$ ${annualTotals.saldo.toFixed(2)}`]
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [99, 102, 241] },
+          columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+          margin: { left: 14, right: 14 }
+        });
+
+        doc.save(`relatorio-anual-${selectedYear}.pdf`);
+      }
+
+      toast.success('PDF exportado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error('Erro ao exportar PDF. Tente novamente.');
+    } finally {
+      setLoadingExport(false);
+    }
+  };
+
   // Função para exportar para CSV
   const exportToCSV = async () => {
     // Validação dos dados antes de exportar
@@ -3595,10 +3717,13 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
 
           <div className="export-buttons">
             <ButtonSpinner onClick={exportToExcel} className="export-btn excel" loading={loadingExport}>
-              📊 Exportar Excel
+              📊 Excel
             </ButtonSpinner>
             <ButtonSpinner onClick={exportToCSV} className="export-btn csv" loading={loadingExport}>
-              📄 Exportar CSV
+              📄 CSV
+            </ButtonSpinner>
+            <ButtonSpinner onClick={() => exportToPDF('monthly')} className="export-btn pdf" loading={loadingExport}>
+              🖨️ PDF
             </ButtonSpinner>
           </div>
 
@@ -3656,6 +3781,12 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
                 💰 Saldo: R$ {annualTotals.saldo.toFixed(2)}
               </p>
             </div>
+          </div>
+
+          <div className="export-buttons">
+            <ButtonSpinner onClick={() => exportToPDF('annual')} className="export-btn pdf" loading={loadingExport}>
+              🖨️ Exportar PDF
+            </ButtonSpinner>
           </div>
 
           <div className="annual-table-wrap">
@@ -3781,33 +3912,111 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
 
   // Função para exportar histórico para Excel
   const exportHistoricoToExcel = () => {
-    const workbook = XLSX.utils.book_new();
+    if (!filteredTransactions.length) {
+      toast.error('Não há transações para exportar!');
+      return;
+    }
+    try {
+      const workbook = XLSX.utils.book_new();
+      const historicoData = [
+        ['Histórico de Transações'],
+        [''],
+        ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']
+      ];
+      filteredTransactions.forEach(t => {
+        historicoData.push([
+          new Date(t.date).toLocaleDateString('pt-BR'),
+          t.description,
+          t.category,
+          t.type === 'entrada' ? 'Entrada' : 'Despesa',
+          parseFloat(t.value).toFixed(2)
+        ]);
+      });
+      const sheet = XLSX.utils.aoa_to_sheet(historicoData);
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Histórico');
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const filterText = filter === 'all' ? 'todas' : filter;
+      const monthText = monthFilter ? `-${monthFilter}` : '';
+      saveAs(blob, `historico-${filterText}${monthText}.xlsx`);
+      toast.success(`Excel exportado! ${filteredTransactions.length} transações.`);
+    } catch (error) {
+      console.error('Erro ao exportar Excel:', error);
+      toast.error('Erro ao exportar Excel. Tente novamente.');
+    }
+  };
 
-    const historicoData = [
-      ['Histórico de Transações'],
-      [''],
-      ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']
-    ];
+  // Função para exportar histórico para PDF
+  const exportHistoricoPDF = () => {
+    if (!filteredTransactions.length) {
+      toast.error('Não há transações para exportar!');
+      return;
+    }
+    try {
+      const doc = new jsPDF();
+      const pageW = doc.internal.pageSize.getWidth();
 
-    filteredTransactions.forEach(t => {
-      historicoData.push([
-        new Date(t.date).toLocaleDateString('pt-BR'),
-        t.description,
-        t.category,
-        t.type === 'entrada' ? 'Entrada' : 'Despesa',
-        parseFloat(t.value).toFixed(2)
-      ]);
-    });
+      // Cabeçalho
+      doc.setFontSize(18);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Histórico de Transações', pageW / 2, 18, { align: 'center' });
 
-    const sheet = XLSX.utils.aoa_to_sheet(historicoData);
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Histórico');
+      // Subtítulo com filtros aplicados
+      const subtitles = [];
+      if (monthFilter) subtitles.push(`Mês: ${monthFilter}`);
+      if (filter !== 'all') subtitles.push(`Tipo: ${filter}`);
+      if (debouncedSearchTerm) subtitles.push(`Busca: "${debouncedSearchTerm}"`);
+      if (subtitles.length > 0) {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(subtitles.join('  |  '), pageW / 2, 26, { align: 'center' });
+      }
 
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      autoTable(doc, {
+        startY: subtitles.length > 0 ? 32 : 26,
+        head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']],
+        body: filteredTransactions.map(t => [
+          new Date(t.date).toLocaleDateString('pt-BR'),
+          t.description,
+          t.category,
+          t.type === 'entrada' ? 'Entrada' : 'Despesa',
+          `R$ ${parseFloat(t.value).toFixed(2)}`
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [99, 102, 241] },
+        columnStyles: { 4: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 3) {
+            data.cell.styles.textColor =
+              data.cell.raw === 'Entrada' ? [22, 163, 74] : [220, 38, 38];
+          }
+        }
+      });
 
-    const filterText = filter === 'all' ? 'todas' : filter;
-    const monthText = monthFilter ? `-${monthFilter}` : '';
-    saveAs(blob, `historico-${filterText}${monthText}.xlsx`);
+      // Rodapé com totais
+      const totalEnt = filteredTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
+      const totalDesp = filteredTransactions.filter(t => t.type === 'despesa').reduce((s, t) => s + parseFloat(t.value), 0);
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 8,
+        body: [
+          ['Entradas', `R$ ${totalEnt.toFixed(2)}`],
+          ['Despesas', `R$ ${totalDesp.toFixed(2)}`],
+          ['Saldo', `R$ ${(totalEnt - totalDesp).toFixed(2)}`]
+        ],
+        theme: 'plain',
+        columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right', fontStyle: 'bold' } },
+        margin: { left: 14, right: 14 }
+      });
+
+      const filterText = filter === 'all' ? 'todas' : filter;
+      const monthText = monthFilter ? `-${monthFilter}` : '';
+      doc.save(`historico-${filterText}${monthText}.pdf`);
+      toast.success(`PDF exportado! ${filteredTransactions.length} transações.`);
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error('Erro ao exportar PDF. Tente novamente.');
+    }
   };
 
   return (
@@ -3846,7 +4055,10 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         />
 
         <button onClick={exportHistoricoToExcel} className="export-btn excel">
-          📊 Exportar
+          📊 Excel
+        </button>
+        <button onClick={exportHistoricoPDF} className="export-btn pdf">
+          🖨️ PDF
         </button>
       </div>
 
