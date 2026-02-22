@@ -3203,10 +3203,10 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
     }));
   }, [installment.enabled, totalValue, instCount, form.date]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setForm({ description: '', value: '', category: '', date: today, wallet_id: '' });
     setInstallment({ enabled: false, count: 2 });
-  };
+  }, [today]);
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
