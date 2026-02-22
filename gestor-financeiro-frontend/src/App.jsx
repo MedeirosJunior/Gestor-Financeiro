@@ -3262,7 +3262,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
       });
       resetForm();
     }
-  }, [form, type, onAdd, onAddBatch, isApiAvailable, installment, instCount, totalValue]);
+  }, [form, type, onAdd, onAddBatch, isApiAvailable, installment, instCount, totalValue, resetForm]);
 
   return (
     <div className={`lancamento-form ${!isApiAvailable ? 'disabled' : ''}`}>
