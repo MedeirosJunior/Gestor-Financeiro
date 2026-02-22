@@ -3695,16 +3695,24 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
 }
 
 // Histórico de transações otimizado
+const HISTORICO_PAGE_SIZE = 30;
+
 const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable, categories, wallets = [] }) => {
   const [filter, setFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [visibleCount, setVisibleCount] = useState(HISTORICO_PAGE_SIZE);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ type: '', description: '', category: '', value: '', date: '', wallet_id: '' });
 
   // Implementar debounce na busca
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Resetar visibilidade quando qualquer filtro muda
+  useEffect(() => {
+    setVisibleCount(HISTORICO_PAGE_SIZE);
+  }, [filter, monthFilter, debouncedSearchTerm, categoryFilter]);
 
   // Categorias disponíveis para o tipo selecionado
   const editCategoryOptions = useMemo(() =>
@@ -3842,8 +3850,13 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         </button>
       </div>
 
+      {/* Resumo de resultados */}
+      <div className="historico-summary">
+        <span>Exibindo <strong>{Math.min(visibleCount, filteredTransactions.length)}</strong> de <strong>{filteredTransactions.length}</strong> transações</span>
+      </div>
+
       <div className="transactions-list">
-        {filteredTransactions.map(transaction => (
+        {filteredTransactions.slice(0, visibleCount).map(transaction => (
           <div key={transaction.id} className={`transaction-card ${transaction.type}${transaction.category === 'transferencia' ? ' transfer' : ''}`}>
             {editingId === transaction.id ? (
               <form onSubmit={handleUpdate} className="edit-transaction-form">
@@ -3960,6 +3973,18 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
           </div>
         ))}
       </div>
+
+      {/* Botão Carregar mais */}
+      {visibleCount < filteredTransactions.length && (
+        <div className="load-more-container">
+          <button
+            className="load-more-btn"
+            onClick={() => setVisibleCount(v => v + HISTORICO_PAGE_SIZE)}
+          >
+            ▼ Carregar mais ({filteredTransactions.length - visibleCount} restantes)
+          </button>
+        </div>
+      )}
     </div>
   );
 });

@@ -371,13 +371,38 @@ app.post('/transactions/batch', async (req, res) => {
 });
 
 app.get('/transactions', async (req, res) => {
-  const { userId } = req.query;
+  const { userId, page, limit } = req.query;
 
   if (!userId || userId === 'undefined') {
     return res.status(400).json({ error: 'userId é obrigatório' });
   }
 
   try {
+    // Se page e limit forem fornecidos, pagina; caso contrário retorna tudo (retrocompat)
+    if (page !== undefined && limit !== undefined) {
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(200, Math.max(1, parseInt(limit) || 50));
+      const offset = (pageNum - 1) * limitNum;
+
+      const [rows, countRow] = await Promise.all([
+        dbAll(
+          'SELECT * FROM transactions WHERE userId = ? ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?',
+          [userId, limitNum, offset]
+        ),
+        dbAll('SELECT COUNT(*) as total FROM transactions WHERE userId = ?', [userId])
+      ]);
+
+      const total = countRow[0]?.total || 0;
+      return res.json({
+        data: rows,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        hasMore: offset + rows.length < total
+      });
+    }
+
+    // Retorno completo (sem paginação)
     const result = await dbAll(
       'SELECT * FROM transactions WHERE userId = ? ORDER BY date DESC, created_at DESC',
       [userId]
