@@ -2,8 +2,36 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 10000;
+
+// ============ SEGURANÇA ============
+const JWT_SECRET = process.env.JWT_SECRET || 'gestor-financeiro-jwt-secret-2026';
+const SALT_ROUNDS = 10;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'junior395@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'j991343519*/*';
+
+// Middleware de autenticação JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+  if (!token) return res.status(401).json({ error: 'Token de autenticação necessário' });
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(401).json({ error: 'Token inválido ou expirado. Faça login novamente.' });
+    req.user = user;
+    next();
+  });
+};
+
+// Middleware para bloquear rotas de debug em produção
+const devOnly = (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Rota não disponível em produção' });
+  }
+  next();
+};
 
 // ============ CAMADA DE BANCO DE DADOS ============
 // Em produção: usa Turso (SQLite na nuvem) via TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
@@ -89,7 +117,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Rota de health check para API
+// Rotas públicas (não precisam de autenticação)
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -208,8 +236,12 @@ const initializeDatabase = async () => {
     // Criar índices para melhor performance
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_transactions_userid ON transactions(userId)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`);
-    // Adicionar wallet_id se não existir (migração de BDs antigos)
+    // Migrações de colunas (executa silenciosamente se já existirem)
     await dbRun(`ALTER TABLE transactions ADD COLUMN wallet_id INTEGER`).catch(() => { });
+    await dbRun(`ALTER TABLE transactions ADD COLUMN transfer_ref INTEGER`).catch(() => { });
+    await dbRun(`ALTER TABLE transactions ADD COLUMN installment_ref TEXT`).catch(() => { });
+    await dbRun(`ALTER TABLE transactions ADD COLUMN installment_num INTEGER`).catch(() => { });
+    await dbRun(`ALTER TABLE transactions ADD COLUMN installment_total INTEGER`).catch(() => { });
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_categories_userid ON categories(userId)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_recurring_userid ON recurring_expenses(userId)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_budgets_userid ON budgets(userId)`);
@@ -218,14 +250,31 @@ const initializeDatabase = async () => {
 
     console.log('✅ Banco SQLite inicializado com sucesso!');
 
+    // Migrar senhas em texto puro para bcrypt (executa uma vez)
+    try {
+      const allUsers = await dbAll('SELECT id, password FROM users');
+      let migrated = 0;
+      for (const u of allUsers) {
+        if (u.password && !u.password.startsWith('$2b$') && !u.password.startsWith('$2a$')) {
+          const hashed = await bcrypt.hash(u.password, SALT_ROUNDS);
+          await dbRun('UPDATE users SET password = ? WHERE id = ?', [hashed, u.id]);
+          migrated++;
+        }
+      }
+      if (migrated > 0) console.log(`🔐 ${migrated} senha(s) migrada(s) para bcrypt`);
+    } catch (migErr) {
+      console.error('Aviso na migração de senhas:', migErr.message);
+    }
+
     // Criar usuário admin se não existir
     try {
-      const adminExists = await dbGet('SELECT id FROM users WHERE email = ?', ['junior395@gmail.com']);
+      const adminExists = await dbGet('SELECT id FROM users WHERE email = ?', [ADMIN_EMAIL]);
 
       if (!adminExists) {
+        const hashedAdminPwd = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
         await dbRun(
           'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-          ['Administrador', 'junior395@gmail.com', 'j991343519*/*']
+          ['Administrador', ADMIN_EMAIL, hashedAdminPwd]
         );
         console.log('👑 Usuário admin criado com sucesso!');
       } else {
@@ -274,7 +323,53 @@ initializeDatabase().catch(error => {
   process.exit(1);
 });
 
-// Rotas para transações
+// Criar múltiplas transações em lote (parcelamento)
+app.post('/transactions/batch', async (req, res) => {
+  const { transactions: batch, wallet_id, userId } = req.body;
+
+  if (!Array.isArray(batch) || batch.length === 0) {
+    return res.status(400).json({ error: 'Lista de transações inválida' });
+  }
+  if (!userId) {
+    return res.status(400).json({ error: 'userId é obrigatório' });
+  }
+
+  try {
+    const ids = [];
+    for (const tx of batch) {
+      const { type, description, category, value, date,
+        installment_ref, installment_num, installment_total } = tx;
+      if (!type || !description || !category || !value || !date) {
+        return res.status(400).json({ error: `Parcela ${installment_num}: campos obrigatórios ausentes` });
+      }
+      const result = await dbRun(
+        `INSERT INTO transactions
+         (type, description, category, value, date, userId, wallet_id,
+          installment_ref, installment_num, installment_total)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [type, description, category, parseFloat(value), date, userId,
+          wallet_id || null, installment_ref || null,
+          installment_num || null, installment_total || null]
+      );
+      ids.push(result.id);
+    }
+
+    // Débitar saldo da conta se vinculada (valor total do parcelamento)
+    if (wallet_id) {
+      const totalValue = batch.reduce((s, tx) => s + parseFloat(tx.value), 0);
+      const firstType = batch[0].type;
+      const delta = firstType === 'entrada' ? totalValue : -totalValue;
+      await dbRun('UPDATE wallets SET balance = balance + ? WHERE id = ?', [delta, wallet_id]);
+    }
+
+    setTimeout(() => backupData(), 100);
+    res.json({ message: `${ids.length} parcela(s) criada(s) com sucesso`, ids });
+  } catch (error) {
+    console.error('Erro ao criar transações em lote:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/transactions', async (req, res) => {
   const { userId } = req.query;
 
@@ -387,7 +482,7 @@ app.delete('/transactions/:id', async (req, res) => {
   }
 });
 
-// Rotas de autenticação
+// Rotas de autenticação (públicas)
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -395,22 +490,30 @@ app.post('/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Email e senha são obrigatórios' });
   }
 
-  console.log('Tentativa de login:', { email, password }); // Log para debug
-
   try {
     const result = await dbGet(
-      'SELECT id, name, email FROM users WHERE email = ? AND password = ?',
-      [email, password]
+      'SELECT id, name, email, password FROM users WHERE email = ?',
+      [email]
     );
-
-    console.log('Resultado da consulta:', result); // Log para debug
 
     if (!result) {
       return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
 
+    const isPasswordValid = await bcrypt.compare(password, result.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
+    }
+
+    const token = jwt.sign(
+      { id: result.id, email: result.email, name: result.name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.json({
       message: 'Login realizado com sucesso',
+      token,
       user: {
         id: result.id,
         name: result.name,
@@ -422,6 +525,9 @@ app.post('/auth/login', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============ ROTAS PROTEGIDAS (requerem JWT) ============
+app.use(authenticateToken);
 
 // Rotas administrativas
 app.post('/admin/register-user', async (req, res) => {
@@ -443,10 +549,11 @@ app.post('/admin/register-user', async (req, res) => {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
-    // Criar usuário
+    // Criar usuário com senha hasheada
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const result = await dbRun(
       'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, password]
+      [name, email, hashedPassword]
     );
 
     res.json({
@@ -490,7 +597,8 @@ app.put('/admin/users/:id', async (req, res) => {
     }
 
     if (password && password.length > 0) {
-      await dbRun('UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?', [name, email, password, id]);
+      const hashedPwd = await bcrypt.hash(password, SALT_ROUNDS);
+      await dbRun('UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?', [name, email, hashedPwd, id]);
     } else {
       await dbRun('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, id]);
     }
@@ -567,8 +675,8 @@ app.get('/admin/stats', async (req, res) => {
   }
 });
 
-// Rota para verificar usuários cadastrados (debug)
-app.get('/debug/users', async (req, res) => {
+// Rota para verificar usuários cadastrados (debug - apenas desenvolvimento)
+app.get('/debug/users', devOnly, async (req, res) => {
   try {
     const result = await dbAll('SELECT id, name, email, password FROM users');
     res.json({
@@ -581,25 +689,19 @@ app.get('/debug/users', async (req, res) => {
   }
 });
 
-// Rota para inicializar/recriar usuário admin (debug)
-app.post('/debug/init-admin', async (req, res) => {
+// Rota para inicializar/recriar usuário admin (debug - apenas desenvolvimento)
+app.post('/debug/init-admin', devOnly, async (req, res) => {
   try {
-    // Deletar usuário admin existente
-    await dbRun('DELETE FROM users WHERE email = ?', ['junior395@gmail.com']);
-
-    // Criar novo usuário admin
+    await dbRun('DELETE FROM users WHERE email = ?', [ADMIN_EMAIL]);
+    const hashedPwd = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
     await dbRun(
       'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      ['Administrador', 'junior395@gmail.com', 'j991343519*/*']
+      ['Administrador', ADMIN_EMAIL, hashedPwd]
     );
-
     console.log('👑 Usuário admin reiniciado com sucesso!');
     res.json({
       message: 'Usuário admin criado com sucesso',
-      user: {
-        email: 'junior395@gmail.com',
-        password: 'j991343519*/*'
-      }
+      user: { email: ADMIN_EMAIL }
     });
   } catch (error) {
     console.error('Erro ao criar admin:', error);
@@ -913,6 +1015,88 @@ app.delete('/goals/:id', async (req, res) => {
     res.json({ message: 'Meta deletada com sucesso' });
   } catch (error) {
     console.error('Erro ao deletar meta:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ ROTAS DE TRANSFERÊNCIAS ============
+app.post('/transfers', async (req, res) => {
+  const { userId, fromWalletId, toWalletId, amount, description, date } = req.body;
+
+  if (!userId || !fromWalletId || !toWalletId || !amount || !date) {
+    return res.status(400).json({ error: 'userId, fromWalletId, toWalletId, amount e date são obrigatórios' });
+  }
+  if (fromWalletId === toWalletId) {
+    return res.status(400).json({ error: 'Contas de origem e destino devem ser diferentes' });
+  }
+
+  const amt = parseFloat(amount);
+  if (isNaN(amt) || amt <= 0) {
+    return res.status(400).json({ error: 'Valor deve ser positivo' });
+  }
+
+  try {
+    const fromWallet = await dbGet('SELECT id, name, balance FROM wallets WHERE id = ? AND userId = ?', [fromWalletId, userId]);
+    const toWallet = await dbGet('SELECT id, name, balance FROM wallets WHERE id = ? AND userId = ?', [toWalletId, userId]);
+
+    if (!fromWallet) return res.status(404).json({ error: 'Conta de origem não encontrada' });
+    if (!toWallet) return res.status(404).json({ error: 'Conta de destino não encontrada' });
+    if (parseFloat(fromWallet.balance) < amt) {
+      return res.status(400).json({ error: 'Saldo insuficiente na conta de origem' });
+    }
+
+    const desc = description || `Transferência`;
+    const descSaida = `${desc} → ${toWallet.name}`;
+    const descEntrada = `${desc} ← ${fromWallet.name}`;
+
+    // 1. Criar transação de saída (debita da origem)
+    const txSaida = await dbRun(
+      'INSERT INTO transactions (type, description, category, value, date, userId, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['despesa', descSaida, 'transferencia', amt, date, userId, fromWalletId]
+    );
+
+    // 2. Criar transação de entrada (credita no destino)
+    const txEntrada = await dbRun(
+      'INSERT INTO transactions (type, description, category, value, date, userId, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['entrada', descEntrada, 'transferencia', amt, date, userId, toWalletId]
+    );
+
+    // 3. Vincular as duas transações com transfer_ref
+    await dbRun('UPDATE transactions SET transfer_ref = ? WHERE id = ?', [txEntrada.id, txSaida.id]);
+    await dbRun('UPDATE transactions SET transfer_ref = ? WHERE id = ?', [txSaida.id, txEntrada.id]);
+
+    // 4. Atualizar saldos
+    await dbRun('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amt, fromWalletId]);
+    await dbRun('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amt, toWalletId]);
+
+    setTimeout(() => backupData(), 100);
+
+    res.json({
+      message: 'Transferência realizada com sucesso',
+      txSaidaId: txSaida.id,
+      txEntradaId: txEntrada.id,
+      from: fromWallet.name,
+      to: toWallet.name,
+      amount: amt
+    });
+  } catch (error) {
+    console.error('Erro na transferência:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar histórico de transferências do usuário
+app.get('/transfers', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId é obrigatório' });
+  try {
+    const result = await dbAll(
+      `SELECT * FROM transactions WHERE userId = ? AND category = 'transferencia' ORDER BY date DESC, created_at DESC`,
+      [userId]
+    );
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao buscar transferências:', error);
     res.status(500).json({ error: error.message });
   }
 });

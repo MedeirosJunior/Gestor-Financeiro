@@ -17,6 +17,36 @@ const SuspenseLoader = ({ message = "Carregando..." }) => (
   </div>
 );
 
+// ============ INTERCEPTOR GLOBAL DE FETCH ============
+// Adiciona JWT automaticamente em todas as requisições para a API
+// e faz logout automático em caso de 401 (token expirado/inválido)
+(function setupFetchInterceptor() {
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : (input?.url ?? '');
+    // Adiciona JWT apenas em chamadas para a API do sistema
+    if (typeof url === 'string' && url.startsWith(config.API_URL)) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        init = {
+          ...init,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            ...(init.headers || {})
+          }
+        };
+      }
+    }
+    const response = await _origFetch(input, init);
+    // Logout automático se token expirar ou for inválido (exceto no próprio login)
+    if (response.status === 401 && typeof url === 'string' && !url.includes('/auth/login')) {
+      ['isAuthenticated', 'currentUser', 'authToken', 'authTimestamp'].forEach(k => localStorage.removeItem(k));
+      window.location.reload();
+    }
+    return response;
+  };
+})();
+
 // Hook personalizado para debounce
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -334,51 +364,34 @@ function App() {
   const [categories, setCategories] = useState(CategoryManager.defaultCategories);
   const [customCategories, setCustomCategories] = useState({ entrada: [], despesa: [] });
 
-  // Verificar autenticação no localStorage com validação mais rigorosa
+  // Verificar autenticação no localStorage
   useEffect(() => {
-    console.log('🔍 Verificando autenticação no localStorage...');
     const authStatus = localStorage.getItem('isAuthenticated');
     const userData = localStorage.getItem('currentUser');
+    const authToken = localStorage.getItem('authToken');
     const authTimestamp = localStorage.getItem('authTimestamp');
 
-    console.log('📋 Dados do localStorage:', {
-      authStatus,
-      userData,
-      authTimestamp
-    });
+    const clearAuth = () => {
+      ['isAuthenticated', 'currentUser', 'authToken', 'authTimestamp'].forEach(k => localStorage.removeItem(k));
+    };
 
-    // Verificar se a autenticação é válida e não expirou (24 horas)
-    if (authStatus === 'true' && userData && authTimestamp) {
+    // Requer token JWT armazenado E timestamps válidos (7 dias)
+    if (authStatus === 'true' && userData && authToken && authTimestamp) {
       const now = new Date().getTime();
       const authTime = parseInt(authTimestamp);
-      const twentyFourHours = 24 * 60 * 60 * 1000; // 24 horas em ms
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-      console.log('⏰ Verificando expiração:', {
-        now,
-        authTime,
-        difference: now - authTime,
-        expired: (now - authTime) >= twentyFourHours
-      });
-
-      if (now - authTime < twentyFourHours) {
+      if (now - authTime < sevenDays) {
         try {
           const user = JSON.parse(userData);
-          console.log('✅ Usuário válido encontrado:', user);
           setIsAuthenticated(true);
           setCurrentUser(user);
         } catch (error) {
-          console.error('❌ Erro ao fazer parse dos dados do usuário:', error);
-          // Limpar dados corrompidos
-          localStorage.removeItem('isAuthenticated');
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('authTimestamp');
+          console.error('Erro ao restaurar sessão:', error);
+          clearAuth();
         }
       } else {
-        console.log('⏰ Sessão expirada - limpando dados');
-        // Sessão expirada - limpar dados
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('authTimestamp');
+        clearAuth();
         toast.info('Sessão expirada. Faça login novamente.');
       }
     }
@@ -626,6 +639,54 @@ function App() {
     }
   }, [fetchTransactions, wallets, categories, isApiAvailable, currentUser]);
 
+  // Lançar múltiplas parcelas de uma vez
+  const addTransactionBatch = useCallback(async (batchData) => {
+    const { transactions: batch, wallet_id, totalValue, type } = batchData;
+    if (!batch || batch.length === 0) return;
+    if (!isApiAvailable) {
+      toast.error('Conexão com servidor necessária para adicionar parcelamentos.');
+      return;
+    }
+    if (!currentUser?.email) {
+      toast.error('Usuário não autenticado.');
+      return;
+    }
+    setLoadingTransactions(true);
+    try {
+      const response = await fetch(`${config.API_URL}/transactions/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactions: batch.map(tx => ({ ...tx, userId: currentUser.email })),
+          wallet_id: wallet_id || null,
+          userId: currentUser.email
+        })
+      });
+      if (!response.ok) {
+        const d = await response.json();
+        toast.error(d.error || 'Erro ao criar parcelamento');
+        return;
+      }
+      // Atualizar saldo local da conta
+      if (wallet_id) {
+        const wallet = wallets.find(w => w.id === parseInt(wallet_id));
+        if (wallet) {
+          const delta = type === 'entrada' ? totalValue : -totalValue;
+          setWallets(prev => prev.map(w =>
+            w.id === wallet.id ? { ...w, balance: parseFloat(w.balance) + delta } : w
+          ));
+        }
+      }
+      await fetchTransactions();
+      toast.success(`💳 ${batch.length} parcela(s) lançada(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao criar parcelamento:', error);
+      ErrorHandler.handleApiError(error, 'criar parcelamento');
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }, [fetchTransactions, wallets, isApiAvailable, currentUser]);
+
   const deleteTransaction = useCallback(async (id) => {
     if (!ValidationUtils.isValidPositiveNumber(id)) {
       toast.error('ID de transação inválido!');
@@ -761,11 +822,8 @@ function App() {
     }
   }, [fetchTransactions, wallets, currentUser, isApiAvailable]);
 
-  const handleLogin = useCallback((user) => {
-    console.log('🔐 HandleLogin chamado com:', user);
-
+  const handleLogin = useCallback((user, token) => {
     if (!user || !ValidationUtils.isValidCredentials(user.name, user.email)) {
-      console.log('❌ Dados de usuário inválidos:', user);
       toast.error('Dados de usuário inválidos!');
       return;
     }
@@ -776,20 +834,13 @@ function App() {
         email: user.email.toLowerCase().trim()
       };
 
-      console.log('🧹 Usuário sanitizado:', sanitizedUser);
-
       setIsAuthenticated(true);
       setCurrentUser(sanitizedUser);
 
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('currentUser', JSON.stringify(sanitizedUser));
       localStorage.setItem('authTimestamp', new Date().getTime().toString());
-
-      console.log('💾 Dados salvos no localStorage:', {
-        isAuthenticated: localStorage.getItem('isAuthenticated'),
-        currentUser: localStorage.getItem('currentUser'),
-        authTimestamp: localStorage.getItem('authTimestamp')
-      });
+      if (token) localStorage.setItem('authToken', token);
 
       toast.success(`Bem-vindo, ${sanitizedUser.name}!`);
     } catch (error) {
@@ -804,6 +855,7 @@ function App() {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authTimestamp');
+      localStorage.removeItem('authToken');
       setActiveTab('dashboard');
       toast.info('Logout realizado com sucesso!');
     } catch (error) {
@@ -1066,30 +1118,40 @@ function App() {
     if (res.ok) { await fetchWallets(); toast.success('Conta removida!'); }
   }, [fetchWallets]);
 
-  const transferBetweenWallets = useCallback(async (fromId, toId, amount) => {
+  const transferBetweenWallets = useCallback(async (fromId, toId, amount, description, date) => {
+    if (!isApiAvailable) {
+      toast.error('Conexão com servidor necessária para transferências.');
+      return false;
+    }
     const from = wallets.find(w => w.id === fromId);
     const to = wallets.find(w => w.id === toId);
     if (!from || !to) { toast.error('Conta não encontrada!'); return false; }
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) { toast.error('Valor inválido!'); return false; }
-    if (parseFloat(from.balance) < amt) { toast.error('Saldo insuficiente na conta de origem!'); return false; }
+    if (fromId === toId) { toast.error('Selecione contas diferentes!'); return false; }
     try {
-      const [r1, r2] = await Promise.all([
-        fetch(`${config.API_URL}/wallets/${fromId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ balance: parseFloat(from.balance) - amt })
-        }),
-        fetch(`${config.API_URL}/wallets/${toId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ balance: parseFloat(to.balance) + amt })
+      const res = await fetch(`${config.API_URL}/transfers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.email,
+          fromWalletId: fromId,
+          toWalletId: toId,
+          amount: amt,
+          description: description || 'Transferência',
+          date: date || new Date().toISOString().split('T')[0]
         })
-      ]);
-      if (r1.ok && r2.ok) { await fetchWallets(); toast.success('Transferência realizada com sucesso!'); return true; }
-      toast.error('Erro na transferência!'); return false;
-    } catch (e) { toast.error('Erro na transferência!'); return false; }
-  }, [wallets, fetchWallets]);
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await Promise.all([fetchWallets(), fetchTransactions()]);
+        toast.success(`🔄 Transferência de R$ ${amt.toFixed(2)} realizada de "${from.name}" para "${to.name}"!`);
+        return true;
+      }
+      toast.error(data.error || 'Erro na transferência!');
+      return false;
+    } catch (e) { toast.error('Erro de conexão na transferência!'); return false; }
+  }, [wallets, fetchWallets, fetchTransactions, currentUser, isApiAvailable]);
 
   // ============ METAS ============
   const fetchGoals = useCallback(async () => {
@@ -1323,6 +1385,7 @@ function App() {
             <LancamentoForm
               type="entrada"
               onAdd={addTransaction}
+              onAddBatch={addTransactionBatch}
               title="💵 Lançar Entrada"
               categories={categories}
               isApiAvailable={isApiAvailable}
@@ -1333,6 +1396,7 @@ function App() {
             <LancamentoForm
               type="despesa"
               onAdd={addTransaction}
+              onAddBatch={addTransactionBatch}
               title="💸 Lançar Despesa"
               categories={categories}
               isApiAvailable={isApiAvailable}
@@ -1491,14 +1555,14 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
       const data = await response.json();
 
       if (response.ok) {
-        // Login bem-sucedido
+        // Login bem-sucedido - repassar token para o App
         const user = {
           name: data.user.name,
           email: data.user.email,
           id: data.user.id
         };
 
-        onLogin(user);
+        onLogin(user, data.token);
         toast.success('Login realizado com sucesso!');
       } else {
         // Login falhou
@@ -2625,7 +2689,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
   const [editingId, setEditingId] = useState(null);
   const [editBalance, setEditBalance] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
-  const [transferForm, setTransferForm] = useState({ fromId: '', toId: '', amount: '' });
+  const [transferForm, setTransferForm] = useState({ fromId: '', toId: '', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
   const [selectedWalletId, setSelectedWalletId] = useState(null);
   const [editingTxId, setEditingTxId] = useState(null);
   const [editingTx, setEditingTx] = useState({});
@@ -2684,9 +2748,9 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
     const fromId = parseInt(transferForm.fromId);
     const toId = parseInt(transferForm.toId);
     if (fromId === toId) { toast.error('Selecione contas diferentes!'); return; }
-    onTransfer(fromId, toId, parseFloat(transferForm.amount));
+    onTransfer(fromId, toId, parseFloat(transferForm.amount), transferForm.description, transferForm.date);
     setShowTransfer(false);
-    setTransferForm({ fromId: '', toId: '', amount: '' });
+    setTransferForm({ fromId: '', toId: '', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
   };
 
   const handleSelectWallet = (walletId) => {
@@ -2816,6 +2880,16 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                 <input type="number" step="0.01" min="0.01" placeholder="0,00" value={transferForm.amount}
                   onChange={e => setTransferForm({ ...transferForm, amount: e.target.value })} required />
               </div>
+              <div className="form-group">
+                <label>Data</label>
+                <input type="date" value={transferForm.date}
+                  onChange={e => setTransferForm({ ...transferForm, date: e.target.value })} required />
+              </div>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label>Descrição (opcional)</label>
+                <input type="text" placeholder="Ex: Resgate poupança, pagamento..." value={transferForm.description}
+                  onChange={e => setTransferForm({ ...transferForm, description: e.target.value })} maxLength={100} />
+              </div>
             </div>
             <button type="submit" className="submit-btn" style={{ background: '#8b5cf6' }}>🔄 Confirmar Transferência</button>
           </form>
@@ -2878,40 +2952,40 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                     </form>
                   ) : (
                     (() => {
-                        const calcBal = calcBalanceFromTx(w.id);
-                        const storedBal = parseFloat(w.balance || 0);
-                        const hasDiscrepancy = Math.abs(calcBal - storedBal) > 0.001;
-                        return (
-                          <>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                              <span className={`balance-value ${storedBal >= 0 ? 'text-success' : 'text-danger'}`}>
-                                R$ {storedBal.toFixed(2)}
-                              </span>
-                              {hasDiscrepancy && (
-                                <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600 }}>
-                                  ⚠️ calculado: R$ {calcBal.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                            {hasDiscrepancy && (
-                              <button
-                                className="submit-btn"
-                                style={{ padding: '4px 10px', fontSize: '12px', background: '#f59e0b' }}
-                                onClick={() => handleRecalculate(w.id)}
-                                disabled={recalculating === w.id}
-                                title="Corrigir saldo baseado nas transações"
-                              >
-                                {recalculating === w.id ? '...' : '🔧 Corrigir'}
-                              </button>
-                            )}
-                            <button className="edit-btn" onClick={() => { setEditingId(w.id); setEditBalance(w.balance); }} title="Editar saldo">✏️</button>
-                            <button className="delete-btn" onClick={() => onDelete(w.id)} title="Excluir">🗑️</button>
-                            <span className="wallet-expand-hint" title={selectedWalletId === w.id ? 'Fechar' : 'Ver transações'}>
-                              {selectedWalletId === w.id ? '▲' : '▼'}
+                      const calcBal = calcBalanceFromTx(w.id);
+                      const storedBal = parseFloat(w.balance || 0);
+                      const hasDiscrepancy = Math.abs(calcBal - storedBal) > 0.001;
+                      return (
+                        <>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                            <span className={`balance-value ${storedBal >= 0 ? 'text-success' : 'text-danger'}`}>
+                              R$ {storedBal.toFixed(2)}
                             </span>
-                          </>
-                        );
-                      })()
+                            {hasDiscrepancy && (
+                              <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600 }}>
+                                ⚠️ calculado: R$ {calcBal.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                          {hasDiscrepancy && (
+                            <button
+                              className="submit-btn"
+                              style={{ padding: '4px 10px', fontSize: '12px', background: '#f59e0b' }}
+                              onClick={() => handleRecalculate(w.id)}
+                              disabled={recalculating === w.id}
+                              title="Corrigir saldo baseado nas transações"
+                            >
+                              {recalculating === w.id ? '...' : '🔧 Corrigir'}
+                            </button>
+                          )}
+                          <button className="edit-btn" onClick={() => { setEditingId(w.id); setEditBalance(w.balance); }} title="Editar saldo">✏️</button>
+                          <button className="delete-btn" onClick={() => onDelete(w.id)} title="Excluir">🗑️</button>
+                          <span className="wallet-expand-hint" title={selectedWalletId === w.id ? 'Fechar' : 'Ver transações'}>
+                            {selectedWalletId === w.id ? '▲' : '▼'}
+                          </span>
+                        </>
+                      );
+                    })()
                   )}
                 </div>
               </div>
@@ -3086,20 +3160,53 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
 }
 
 // Formulário de lançamento otimizado
-const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvailable, wallets = [] }) => {
+// Avança a data base de uma parcela em N meses
+const addMonths = (dateStr, months) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1 + months, d);
+  // Se o dia "transbordou" (ex: 31 fev), usar último dia do mês
+  const maxDay = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
+  dt.setDate(Math.min(d, maxDay));
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+
+const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories, isApiAvailable, wallets = [] }) => {
+  const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     description: '',
     value: '',
     category: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: today,
     wallet_id: ''
   });
+  const [installment, setInstallment] = useState({ enabled: false, count: 2 });
 
   // Usar categorias dinâmicas
   const availableCategories = useMemo(() =>
     categories?.[type] || [],
     [categories, type]
   );
+
+  const totalValue = parseFloat(form.value) || 0;
+  const instCount = Math.max(2, Math.min(48, parseInt(installment.count) || 2));
+  const instValue = totalValue > 0 ? totalValue / instCount : 0;
+
+  // Preview das parcelas
+  const instPreview = useMemo(() => {
+    if (!installment.enabled || totalValue <= 0 || !form.date) return [];
+    const base = Math.floor((totalValue / instCount) * 100) / 100;
+    const last = Math.round((totalValue - base * (instCount - 1)) * 100) / 100;
+    return Array.from({ length: instCount }, (_, i) => ({
+      num: i + 1,
+      date: addMonths(form.date, i),
+      value: i === instCount - 1 ? last : base
+    }));
+  }, [installment.enabled, totalValue, instCount, form.date]);
+
+  const resetForm = () => {
+    setForm({ description: '', value: '', category: '', date: today, wallet_id: '' });
+    setInstallment({ enabled: false, count: 2 });
+  };
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
@@ -3108,32 +3215,54 @@ const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvaila
       toast.error('Conexão com servidor necessária para adicionar transações!');
       return;
     }
-
     if (!form.description || !form.value || !form.category) {
       toast.error('Preencha todos os campos obrigatórios!');
       return;
     }
-
     if (parseFloat(form.value) <= 0) {
       toast.error('O valor deve ser maior que zero!');
       return;
     }
 
-    onAdd({
-      ...form,
-      type,
-      value: parseFloat(form.value),
-      wallet_id: form.wallet_id ? parseInt(form.wallet_id) : null
-    });
+    if (installment.enabled) {
+      // Modo parcelamento
+      if (instCount < 2 || instCount > 48) {
+        toast.error('Número de parcelas deve ser entre 2 e 48!');
+        return;
+      }
+      const installment_ref = `inst_${Date.now()}`;
+      const base = Math.floor((totalValue / instCount) * 100) / 100;
+      const last = Math.round((totalValue - base * (instCount - 1)) * 100) / 100;
 
-    setForm({
-      description: '',
-      value: '',
-      category: '',
-      date: new Date().toISOString().slice(0, 10),
-      wallet_id: ''
-    });
-  }, [form, type, onAdd, isApiAvailable]);
+      const batch = Array.from({ length: instCount }, (_, i) => ({
+        type,
+        description: `${form.description.trim()} (${i + 1}/${instCount})`,
+        category: form.category,
+        value: i === instCount - 1 ? last : base,
+        date: addMonths(form.date, i),
+        installment_ref,
+        installment_num: i + 1,
+        installment_total: instCount
+      }));
+
+      onAddBatch({
+        transactions: batch,
+        wallet_id: form.wallet_id ? parseInt(form.wallet_id) : null,
+        totalValue,
+        type
+      });
+      resetForm();
+    } else {
+      // Modo simples
+      onAdd({
+        ...form,
+        type,
+        value: parseFloat(form.value),
+        wallet_id: form.wallet_id ? parseInt(form.wallet_id) : null
+      });
+      resetForm();
+    }
+  }, [form, type, onAdd, onAddBatch, isApiAvailable, installment, instCount, totalValue]);
 
   return (
     <div className={`lancamento-form ${!isApiAvailable ? 'disabled' : ''}`}>
@@ -3159,7 +3288,7 @@ const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvaila
         </div>
 
         <div className="form-group">
-          <label>Valor:</label>
+          <label>{installment.enabled ? `Valor Total (R$):` : 'Valor (R$):'}</label>
           <input
             type="number"
             step="0.01"
@@ -3189,7 +3318,7 @@ const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvaila
         </div>
 
         <div className="form-group">
-          <label>Data:</label>
+          <label>{installment.enabled ? 'Data da 1ª Parcela:' : 'Data:'}</label>
           <input
             type="date"
             value={form.date}
@@ -3217,6 +3346,59 @@ const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvaila
           </div>
         )}
 
+        {/* Toggle de parcelamento — só faz sentido para despesas, mas disponível para ambos */}
+        <div className="form-group installment-toggle">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={installment.enabled}
+              onChange={e => setInstallment(p => ({ ...p, enabled: e.target.checked }))}
+              disabled={!isApiAvailable}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <span>💳 Parcelar</span>
+          </label>
+        </div>
+
+        {installment.enabled && (
+          <div className="installment-section">
+            <div className="form-group">
+              <label>Número de Parcelas:</label>
+              <input
+                type="number"
+                min="2"
+                max="48"
+                value={installment.count}
+                onChange={e => setInstallment(p => ({ ...p, count: parseInt(e.target.value) || 2 }))}
+                disabled={!isApiAvailable}
+              />
+            </div>
+
+            {instValue > 0 && (
+              <div className="installment-preview">
+                <div className="installment-summary">
+                  <span>💳 {instCount}x de <strong>R$ {instValue.toFixed(2)}</strong></span>
+                  <span className="installment-total">Total: R$ {totalValue.toFixed(2)}</span>
+                </div>
+                {instPreview.length > 0 && (
+                  <details className="installment-details">
+                    <summary>Ver cronograma de parcelas</summary>
+                    <div className="installment-list">
+                      {instPreview.map(p => (
+                        <div key={p.num} className="installment-item">
+                          <span className="inst-num">{p.num}ª parcela</span>
+                          <span className="inst-date">{new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                          <span className="inst-value">R$ {p.value.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           type="submit"
           className="submit-btn"
@@ -3224,7 +3406,9 @@ const LancamentoForm = React.memo(({ type, onAdd, title, categories, isApiAvaila
         >
           {!isApiAvailable
             ? 'Servidor Offline'
-            : `Lançar ${type === 'entrada' ? 'Entrada' : 'Despesa'}`
+            : installment.enabled
+              ? `💳 Lançar ${instCount}x de R$ ${instValue.toFixed(2)}`
+              : `Lançar ${type === 'entrada' ? 'Entrada' : 'Despesa'}`
           }
         </button>
       </form>
@@ -3573,7 +3757,10 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
   // Otimizar filtros com useMemo incluindo busca e validação de usuário
   const filteredTransactions = useMemo(() =>
     transactions.filter(t => {
-      const typeMatch = filter === 'all' || t.type === filter;
+      const typeMatch = filter === 'all'
+        || (filter === 'transferencia' ? t.category === 'transferencia'
+          : filter === 'parcelas' ? t.installment_ref != null
+            : (t.type === filter && t.category !== 'transferencia'));
       const monthMatch = !monthFilter || t.date.startsWith(monthFilter);
       const searchMatch = !debouncedSearchTerm ||
         t.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
@@ -3624,6 +3811,8 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
           <option value="all">Todas</option>
           <option value="entrada">Entradas</option>
           <option value="despesa">Despesas</option>
+          <option value="transferencia">🔄 Transferências</option>
+          <option value="parcelas">💳 Parcelas</option>
         </select>
 
         <input
@@ -3655,7 +3844,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
 
       <div className="transactions-list">
         {filteredTransactions.map(transaction => (
-          <div key={transaction.id} className={`transaction-card ${transaction.type}`}>
+          <div key={transaction.id} className={`transaction-card ${transaction.type}${transaction.category === 'transferencia' ? ' transfer' : ''}`}>
             {editingId === transaction.id ? (
               <form onSubmit={handleUpdate} className="edit-transaction-form">
                 <div className="edit-transaction-grid">
@@ -3718,8 +3907,15 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
             ) : (
               <>
                 <div className="transaction-info">
-                  <h4>{transaction.description}</h4>
-                  <p>{transaction.category}
+                  <h4>
+                    {transaction.category === 'transferencia' && <span title="Transferência entre contas" style={{ marginRight: '6px' }}>🔄</span>}
+                    {transaction.installment_ref && <span className="installment-badge" title={`Parcela ${transaction.installment_num} de ${transaction.installment_total}`}>💳 {transaction.installment_num}/{transaction.installment_total}</span>}
+                    {transaction.description}
+                  </h4>
+                  <p>
+                    {transaction.category === 'transferencia'
+                      ? <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Transferência</span>
+                      : transaction.category}
                     {transaction.wallet_id && wallets.length > 0 && (() => {
                       const w = wallets.find(ww => ww.id === parseInt(transaction.wallet_id));
                       return w ? <span className="tx-wallet-badge"> • 🏦 {w.name}</span> : null;

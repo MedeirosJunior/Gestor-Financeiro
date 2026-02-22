@@ -655,6 +655,111 @@ body {
   font-weight: 600;
 }
 
+/* ============ PARCELAMENTO ============ */
+.installment-toggle {
+  background: #f8faff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px !important;
+}
+
+.installment-section {
+  background: #f0f4ff;
+  border: 1px solid #a5b4fc;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.installment-preview {
+  margin-top: 12px;
+}
+
+.installment-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  border: 1px solid #c7d2fe;
+  font-weight: 500;
+  color: #3730a3;
+}
+
+.installment-total {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.installment-details {
+  margin-top: 10px;
+}
+
+.installment-details summary {
+  cursor: pointer;
+  color: #6366f1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.installment-list {
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e0e7ff;
+  border-radius: 8px;
+  background: white;
+}
+
+.installment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.875rem;
+}
+
+.installment-item:last-child {
+  border-bottom: none;
+}
+
+.inst-num {
+  color: #6366f1;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.inst-date {
+  color: #64748b;
+  flex: 1;
+  text-align: center;
+}
+
+.inst-value {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Badge de parcela no card do histórico */
+.installment-badge {
+  display: inline-block;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 .form-group {
   margin-bottom: 24px;
 }
@@ -948,6 +1053,15 @@ body {
 
 .transaction-card.despesa::before {
   background: #ef4444;
+}
+
+.transaction-card.transfer::before {
+  background: #8b5cf6;
+}
+
+.transaction-card.transfer {
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(to right, #f5f3ff 0%, white 60%);
 }
 
 .transaction-card:hover {

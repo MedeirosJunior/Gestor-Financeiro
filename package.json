@@ -33,8 +33,10 @@
   "homepage": "https://github.com/MedeirosJunior/Gestor-Financeito#readme",
   "dependencies": {
     "@libsql/client": "^0.17.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "sqlite3": "^5.1.6"
   }
 }
