@@ -13,6 +13,58 @@ const SALT_ROUNDS = 10;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'junior395@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'j991343519*/*';
 
+// ============ VALIDAÇÃO ============
+const MAX_VALUE = 999_999_999;
+const VALID_TRANSACTION_TYPES = ['entrada', 'despesa'];
+const VALID_RECURRENCES = ['monthly', 'bimonthly', 'quarterly', 'semiannual', 'annual', 'fifth-business-day'];
+const VALID_BUDGET_PERIODS = ['monthly', 'annual', 'mensal', 'anual', 'weekly', 'semanal'];
+const VALID_WALLET_TYPES = ['corrente', 'poupanca', 'investimento', 'carteira'];
+
+/** Retira espaços e limita tamanho. Retorna string vazia se nulo. */
+const sanitize = (val, maxLen = 255) =>
+  val == null ? '' : String(val).trim().slice(0, maxLen);
+
+/** Valida formato de data YYYY-MM-DD. */
+const isValidDate = (str) => /^\d{4}-\d{2}-\d{2}$/.test(String(str || ''));
+
+/** Valida formato de e-mail básico. */
+const isValidEmail = (str) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str || '').trim());
+
+/** Número positivo finito dentro do limite. */
+const isPositiveNum = (val) => { const n = parseFloat(val); return !isNaN(n) && isFinite(n) && n > 0 && n <= MAX_VALUE; };
+
+/** Número não-negativo finito dentro do limite. */
+const isNonNegativeNum = (val) => { const n = parseFloat(val); return !isNaN(n) && isFinite(n) && n >= 0 && n <= MAX_VALUE; };
+
+/**
+ * Valida os campos de uma transação individual.
+ * Retorna array de mensagens de erro (vazio = válido).
+ */
+const validateTx = ({ type, description, category, value, date }) => {
+  const errors = [];
+  if (!VALID_TRANSACTION_TYPES.includes(type))
+    errors.push('"type" deve ser "entrada" ou "despesa"');
+  const desc = sanitize(description, 200);
+  if (!desc) errors.push('"description" é obrigatória (máx 200 caracteres)');
+  const cat = sanitize(category, 100);
+  if (!cat) errors.push('"category" é obrigatória (máx 100 caracteres)');
+  if (!isPositiveNum(value))
+    errors.push('"value" deve ser um número positivo (máx 999.999.999)');
+  if (!isValidDate(date))
+    errors.push('"date" deve estar no formato YYYY-MM-DD');
+  return errors;
+};
+
+/**
+ * Constrói um array de erros a partir de regras.
+ * Cada regra é [condicao, mensagem]; se condicao === true, o erro é adicionado.
+ */
+const buildErrors = (rules) => rules.filter(([cond]) => cond).map(([, msg]) => msg);
+
+/** Responde 400 com o primeiro erro e o array completo. */
+const badRequest = (res, errors) =>
+  res.status(400).json({ error: errors[0], errors });
+
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -327,11 +379,17 @@ initializeDatabase().catch(error => {
 app.post('/transactions/batch', async (req, res) => {
   const { transactions: batch, wallet_id, userId } = req.body;
 
-  if (!Array.isArray(batch) || batch.length === 0) {
-    return res.status(400).json({ error: 'Lista de transações inválida' });
-  }
-  if (!userId) {
-    return res.status(400).json({ error: 'userId é obrigatório' });
+  if (!userId) return badRequest(res, ['"userId" é obrigatório']);
+  if (!Array.isArray(batch) || batch.length < 2)
+    return badRequest(res, ['"transactions" deve ser um array com ao menos 2 itens']);
+  if (batch.length > 48)
+    return badRequest(res, ['Máximo de 48 parcelas por lançamento']);
+
+  // Validar cada parcela
+  for (const tx of batch) {
+    const txErrors = validateTx(tx);
+    if (txErrors.length)
+      return badRequest(res, [`Parcela ${tx.installment_num}: ${txErrors[0]}`]);
   }
 
   try {
@@ -339,15 +397,14 @@ app.post('/transactions/batch', async (req, res) => {
     for (const tx of batch) {
       const { type, description, category, value, date,
         installment_ref, installment_num, installment_total } = tx;
-      if (!type || !description || !category || !value || !date) {
-        return res.status(400).json({ error: `Parcela ${installment_num}: campos obrigatórios ausentes` });
-      }
+      const desc = sanitize(description, 200);
+      const cat = sanitize(category, 100);
       const result = await dbRun(
         `INSERT INTO transactions
          (type, description, category, value, date, userId, wallet_id,
           installment_ref, installment_num, installment_total)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [type, description, category, parseFloat(value), date, userId,
+        [type, desc, cat, parseFloat(value), date, userId,
           wallet_id || null, installment_ref || null,
           installment_num || null, installment_total || null]
       );
@@ -417,14 +474,19 @@ app.get('/transactions', async (req, res) => {
 app.post('/transactions', async (req, res) => {
   const { type, description, category, value, date, userId, wallet_id } = req.body;
 
-  if (!type || !description || !category || !value || !date || !userId) {
-    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-  }
+  const errors = [
+    ...(!userId ? ['"userId" é obrigatório'] : []),
+    ...validateTx({ type, description, category, value, date })
+  ];
+  if (errors.length) return badRequest(res, errors);
+
+  const desc = sanitize(description, 200);
+  const cat = sanitize(category, 100);
 
   try {
     const result = await dbRun(
       'INSERT INTO transactions (type, description, category, value, date, userId, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [type, description, category, value, date, userId, wallet_id || null]
+      [type, desc, cat, parseFloat(value), date, userId, wallet_id || null]
     );
 
     // Fazer backup após inserção
@@ -444,9 +506,14 @@ app.put('/transactions/:id', async (req, res) => {
   const { id } = req.params;
   const { type, description, category, value, date, userId, wallet_id } = req.body;
 
-  if (!type || !description || !category || !value || !date || !userId) {
-    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-  }
+  const errors = [
+    ...(!userId ? ['"userId" é obrigatório'] : []),
+    ...validateTx({ type, description, category, value, date })
+  ];
+  if (errors.length) return badRequest(res, errors);
+
+  const desc = sanitize(description, 200);
+  const cat = sanitize(category, 100);
 
   try {
     const checkResult = await dbGet('SELECT userId FROM transactions WHERE id = ?', [id]);
@@ -458,7 +525,7 @@ app.put('/transactions/:id', async (req, res) => {
     }
     await dbRun(
       'UPDATE transactions SET type = ?, description = ?, category = ?, value = ?, date = ?, wallet_id = ? WHERE id = ?',
-      [type, description, category, parseFloat(value), date, wallet_id || null, id]
+      [type, desc, cat, parseFloat(value), date, wallet_id || null, id]
     );
     res.json({ message: 'Transação atualizada com sucesso' });
   } catch (error) {
@@ -511,9 +578,12 @@ app.delete('/transactions/:id', async (req, res) => {
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email e senha são obrigatórios' });
-  }
+  const errors = buildErrors([
+    [!email || !password, 'Email e senha são obrigatórios'],
+    [email && !isValidEmail(email), 'Formato de e-mail inválido'],
+    [password && (sanitize(password, 0).length === 0 || String(password).length > 200), 'Senha inválida']
+  ]);
+  if (errors.length) return badRequest(res, errors);
 
   try {
     const result = await dbGet(
@@ -557,14 +627,17 @@ app.use(authenticateToken);
 // Rotas administrativas
 app.post('/admin/register-user', async (req, res) => {
   const { name, email, password } = req.body;
+  const nameClean = sanitize(name, 100);
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
-  }
+  const errors = buildErrors([
+    [!nameClean, '"name" é obrigatório (máx 100 caracteres)'],
+    [!email, '"email" é obrigatório'],
+    [email && !isValidEmail(email), 'Formato de e-mail inválido'],
+    [!password, '"password" é obrigatória'],
+    [password && password.length < 6, 'Senha deve ter pelo menos 6 caracteres'],
+    [password && password.length > 200, 'Senha deve ter no máximo 200 caracteres']
+  ]);
+  if (errors.length) return badRequest(res, errors);
 
   try {
     // Verificar se email já existe
@@ -578,7 +651,7 @@ app.post('/admin/register-user', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const result = await dbRun(
       'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
+      [nameClean, sanitize(email, 200).toLowerCase(), hashedPassword]
     );
 
     res.json({
@@ -604,10 +677,18 @@ app.get('/admin/users', async (req, res) => {
 app.put('/admin/users/:id', async (req, res) => {
   const { id } = req.params;
   const { name, email, password } = req.body;
+  const nameClean = sanitize(name, 100);
 
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Nome e email são obrigatórios' });
-  }
+  const errors = buildErrors([
+    [!nameClean, '"name" é obrigatório (máx 100 caracteres)'],
+    [!email, '"email" é obrigatório'],
+    [email && !isValidEmail(email), 'Formato de e-mail inválido'],
+    [password && password.length > 0 && password.length < 6, 'Senha deve ter pelo menos 6 caracteres'],
+    [password && password.length > 200, 'Senha deve ter no máximo 200 caracteres']
+  ]);
+  if (errors.length) return badRequest(res, errors);
+
+  const emailClean = sanitize(email, 200).toLowerCase();
 
   try {
     const userExists = await dbGet('SELECT id FROM users WHERE id = ?', [id]);
@@ -616,16 +697,16 @@ app.put('/admin/users/:id', async (req, res) => {
     }
 
     // Verificar se o novo email já pertence a outro usuário
-    const emailConflict = await dbGet('SELECT id FROM users WHERE email = ? AND id != ?', [email, id]);
+    const emailConflict = await dbGet('SELECT id FROM users WHERE email = ? AND id != ?', [emailClean, id]);
     if (emailConflict) {
       return res.status(400).json({ error: 'Email já está em uso por outro usuário' });
     }
 
     if (password && password.length > 0) {
       const hashedPwd = await bcrypt.hash(password, SALT_ROUNDS);
-      await dbRun('UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?', [name, email, hashedPwd, id]);
+      await dbRun('UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?', [nameClean, emailClean, hashedPwd, id]);
     } else {
-      await dbRun('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, id]);
+      await dbRun('UPDATE users SET name = ?, email = ? WHERE id = ?', [nameClean, emailClean, id]);
     }
 
     res.json({ message: 'Usuário atualizado com sucesso' });
@@ -751,13 +832,17 @@ app.get('/categories', async (req, res) => {
 
 app.post('/categories', async (req, res) => {
   const { userId, name, type, icon, color } = req.body;
-  if (!userId || !name || !type) {
-    return res.status(400).json({ error: 'userId, name e type são obrigatórios' });
-  }
+  const nameClean = sanitize(name, 50);
+  const errors = buildErrors([
+    [!userId, '"userId" é obrigatório'],
+    [!nameClean, '"name" é obrigatório (máx 50 caracteres)'],
+    [!VALID_TRANSACTION_TYPES.includes(type), '"type" deve ser "entrada" ou "despesa"']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     const result = await dbRun(
       'INSERT INTO categories (userId, name, type, icon, color) VALUES (?, ?, ?, ?, ?)',
-      [userId, name, type, icon || '💰', color || '#6b7280']
+      [userId, nameClean, type, sanitize(icon, 10) || '💰', sanitize(color, 20) || '#6b7280']
     );
     res.json({ id: result.id, message: 'Categoria criada com sucesso' });
   } catch (error) {
@@ -769,8 +854,11 @@ app.post('/categories', async (req, res) => {
 app.put('/categories/:id', async (req, res) => {
   const { id } = req.params;
   const { name, icon, color } = req.body;
+  const nameClean = sanitize(name, 50);
+  if (!nameClean) return badRequest(res, ['"name" é obrigatório (máx 50 caracteres)']);
   try {
-    await dbRun('UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?', [name, icon, color, id]);
+    await dbRun('UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?',
+      [nameClean, sanitize(icon, 10), sanitize(color, 20), id]);
     res.json({ message: 'Categoria atualizada com sucesso' });
   } catch (error) {
     console.error('Erro ao atualizar categoria:', error);
@@ -806,13 +894,20 @@ app.get('/recurring-expenses', async (req, res) => {
 
 app.post('/recurring-expenses', async (req, res) => {
   const { userId, description, category, value, frequency, next_due_date } = req.body;
-  if (!userId || !description || !category || !value || !frequency || !next_due_date) {
-    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-  }
+  const desc = sanitize(description, 200);
+  const errors = buildErrors([
+    [!userId, '"userId" é obrigatório'],
+    [!desc, '"description" é obrigatória (máx 200 caracteres)'],
+    [!sanitize(category, 100), '"category" é obrigatória'],
+    [!isPositiveNum(value), '"value" deve ser um número positivo (máx 999.999.999)'],
+    [!VALID_RECURRENCES.includes(frequency), `"frequency" inválida. Use: ${VALID_RECURRENCES.join(', ')}`],
+    [!isValidDate(next_due_date), '"next_due_date" deve estar no formato YYYY-MM-DD']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     const result = await dbRun(
       'INSERT INTO recurring_expenses (userId, description, category, value, frequency, next_due_date) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, description, category, value, frequency, next_due_date]
+      [userId, desc, sanitize(category, 100), parseFloat(value), frequency, next_due_date]
     );
     res.json({ id: result.id, message: 'Despesa recorrente criada com sucesso' });
   } catch (error) {
@@ -824,10 +919,18 @@ app.post('/recurring-expenses', async (req, res) => {
 app.put('/recurring-expenses/:id', async (req, res) => {
   const { id } = req.params;
   const { description, category, value, frequency, next_due_date, is_active } = req.body;
+  const desc = sanitize(description, 200);
+  const errors = buildErrors([
+    [!desc, '"description" é obrigatória (máx 200 caracteres)'],
+    [value != null && !isPositiveNum(value), '"value" deve ser um número positivo'],
+    [frequency && !VALID_RECURRENCES.includes(frequency), `"frequency" inválida`],
+    [next_due_date && !isValidDate(next_due_date), '"next_due_date" deve estar no formato YYYY-MM-DD']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     await dbRun(
       'UPDATE recurring_expenses SET description = ?, category = ?, value = ?, frequency = ?, next_due_date = ?, is_active = ? WHERE id = ?',
-      [description, category, value, frequency, next_due_date, is_active ?? 1, id]
+      [desc, sanitize(category, 100), value != null ? parseFloat(value) : value, frequency, next_due_date, is_active ?? 1, id]
     );
     res.json({ message: 'Despesa recorrente atualizada com sucesso' });
   } catch (error) {
@@ -864,13 +967,17 @@ app.get('/budgets', async (req, res) => {
 
 app.post('/budgets', async (req, res) => {
   const { userId, category, limit_value, period, period_month } = req.body;
-  if (!userId || !category || !limit_value || !period) {
-    return res.status(400).json({ error: 'userId, category, limit_value e period são obrigatórios' });
-  }
+  const errors = buildErrors([
+    [!userId, '"userId" é obrigatório'],
+    [!sanitize(category, 100), '"category" é obrigatória'],
+    [!isPositiveNum(limit_value), '"limit_value" deve ser um número positivo'],
+    [!VALID_BUDGET_PERIODS.includes(period), `"period" inválido. Use: ${VALID_BUDGET_PERIODS.join(', ')}`]
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     const result = await dbRun(
       'INSERT INTO budgets (userId, category, limit_value, period, period_month) VALUES (?, ?, ?, ?, ?)',
-      [userId, category, limit_value, period, period_month || null]
+      [userId, sanitize(category, 100), parseFloat(limit_value), period, period_month || null]
     );
     res.json({ id: result.id, message: 'Orçamento criado com sucesso' });
   } catch (error) {
@@ -882,10 +989,15 @@ app.post('/budgets', async (req, res) => {
 app.put('/budgets/:id', async (req, res) => {
   const { id } = req.params;
   const { limit_value, period, period_month, is_active } = req.body;
+  const errors = buildErrors([
+    [limit_value != null && !isPositiveNum(limit_value), '"limit_value" deve ser um número positivo'],
+    [period && !VALID_BUDGET_PERIODS.includes(period), '"period" inválido']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     await dbRun(
       'UPDATE budgets SET limit_value = ?, period = ?, period_month = ?, is_active = ? WHERE id = ?',
-      [limit_value, period, period_month, is_active ?? 1, id]
+      [limit_value != null ? parseFloat(limit_value) : limit_value, period, period_month, is_active ?? 1, id]
     );
     res.json({ message: 'Orçamento atualizado com sucesso' });
   } catch (error) {
@@ -922,19 +1034,24 @@ app.get('/wallets', async (req, res) => {
 
 app.post('/wallets', async (req, res) => {
   const { userId, name, type, balance, currency } = req.body;
-  if (!userId || !name || !type) {
-    return res.status(400).json({ error: 'userId, name e type são obrigatórios' });
-  }
+  const nameClean = sanitize(name, 50);
+  const errors = buildErrors([
+    [!userId, '"userId" é obrigatório'],
+    [!nameClean, '"name" é obrigatório (máx 50 caracteres)'],
+    [!VALID_WALLET_TYPES.includes(type), `"type" inválido. Use: ${VALID_WALLET_TYPES.join(', ')}`],
+    [balance != null && !isNonNegativeNum(balance), '"balance" deve ser um número não-negativo']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     const result = await dbRun(
       'INSERT INTO wallets (userId, name, type, balance, currency) VALUES (?, ?, ?, ?, ?)',
-      [userId, name, type, balance || 0, currency || 'BRL']
+      [userId, nameClean, type, parseFloat(balance || 0), sanitize(currency, 10) || 'BRL']
     );
     res.json({ id: result.id, message: 'Carteira criada com sucesso' });
   } catch (error) {
     console.error('Erro ao criar carteira:', error);
     if (error.message && error.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: `Você já possui uma conta com o nome "${name}". Use um nome diferente.` });
+      return res.status(409).json({ error: `Você já possui uma conta com o nome "${nameClean}". Use um nome diferente.` });
     }
     res.status(500).json({ error: error.message });
   }
@@ -1003,13 +1120,19 @@ app.get('/goals', async (req, res) => {
 
 app.post('/goals', async (req, res) => {
   const { userId, name, target_amount, current_amount, deadline, category } = req.body;
-  if (!userId || !name || !target_amount) {
-    return res.status(400).json({ error: 'userId, name e target_amount são obrigatórios' });
-  }
+  const nameClean = sanitize(name, 100);
+  const errors = buildErrors([
+    [!userId, '"userId" é obrigatório'],
+    [!nameClean, '"name" é obrigatório (máx 100 caracteres)'],
+    [!isPositiveNum(target_amount), '"target_amount" deve ser um número positivo'],
+    [current_amount != null && !isNonNegativeNum(current_amount), '"current_amount" deve ser não-negativo'],
+    [deadline && !isValidDate(deadline), '"deadline" deve estar no formato YYYY-MM-DD']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     const result = await dbRun(
       'INSERT INTO goals (userId, name, target_amount, current_amount, deadline, category) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, name, target_amount, current_amount || 0, deadline || null, category || null]
+      [userId, nameClean, parseFloat(target_amount), parseFloat(current_amount || 0), deadline || null, sanitize(category, 100) || null]
     );
     res.json({ id: result.id, message: 'Meta criada com sucesso' });
   } catch (error) {
@@ -1021,10 +1144,18 @@ app.post('/goals', async (req, res) => {
 app.put('/goals/:id', async (req, res) => {
   const { id } = req.params;
   const { name, target_amount, current_amount, deadline, category, is_active } = req.body;
+  const nameClean = sanitize(name, 100);
+  const errors = buildErrors([
+    [!nameClean, '"name" é obrigatório (máx 100 caracteres)'],
+    [target_amount != null && !isPositiveNum(target_amount), '"target_amount" deve ser um número positivo'],
+    [current_amount != null && !isNonNegativeNum(current_amount), '"current_amount" deve ser não-negativo'],
+    [deadline && !isValidDate(deadline), '"deadline" deve estar no formato YYYY-MM-DD']
+  ]);
+  if (errors.length) return badRequest(res, errors);
   try {
     await dbRun(
       'UPDATE goals SET name = ?, target_amount = ?, current_amount = ?, deadline = ?, category = ?, is_active = ? WHERE id = ?',
-      [name, target_amount, current_amount, deadline, category, is_active ?? 1, id]
+      [nameClean, target_amount, current_amount, deadline, category, is_active ?? 1, id]
     );
     res.json({ message: 'Meta atualizada com sucesso' });
   } catch (error) {
