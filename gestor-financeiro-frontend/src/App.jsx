@@ -3448,7 +3448,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
     const found = allCatsFlat.find(c => c.id === id);
     return found ? found.name : id;
   };
-  // Remove emoji/unicode especial para uso em PDFs (range: ASCII imprimível + Latin Extended pt-BR)
+  // Remove emoji/unicode especial para uso em PDFs (evita \u0000 proibido pelo no-control-regex)
   const stripEmojiPdf = (s) => String(s).replace(/[^ -~\u00A0-\u024F]/g, '').trim();
   const [reportMode, setReportMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
