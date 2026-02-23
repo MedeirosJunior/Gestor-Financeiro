@@ -676,14 +676,9 @@ app.post('/auth/forgot-password', async (req, res) => {
     const expiry = Date.now() + 15 * 60 * 1000;
     passwordResetTokens.set(email.toLowerCase().trim(), { token, expiry });
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
-      return res.json({ ok: true, demo: true, token, message: 'SMTP não configurado. Código retornado para demonstração.' });
-    }
+    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpUser = process.env.SMTP_USER || 'jrinfosistemas@gmail.com';
+    const smtpPass = process.env.SMTP_PASS || 'lofn zczm bcld emoc';
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
@@ -1452,17 +1447,10 @@ app.post('/send-email-summary', authenticateToken, async (req, res) => {
 </body></html>`;
 
   // Verificar se nodemailer está disponível + SMTP configurado
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpUser = process.env.SMTP_USER || 'jrinfosistemas@gmail.com';
+  const smtpPass = process.env.SMTP_PASS || 'lofn zczm bcld emoc';
   const smtpFrom = process.env.SMTP_FROM || smtpUser;
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    // Modo demonstração: log no console e retorna sucesso com aviso
-    console.log(`📧 [EMAIL DEMO] Para: ${email} | ${notifications.length} notificações`);
-    console.log('   Configure SMTP_HOST, SMTP_USER, SMTP_PASS para envio real.');
-    return res.json({ ok: true, demo: true, message: 'E-mail simulado (SMTP não configurado no servidor). Configure as variáveis SMTP_HOST, SMTP_USER e SMTP_PASS no Render.' });
-  }
 
   try {
     const nodemailer = require('nodemailer');
