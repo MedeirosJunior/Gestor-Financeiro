@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const app = express();
 const port = process.env.PORT || 10000;
 
@@ -735,7 +736,6 @@ app.post('/auth/forgot-password', async (req, res) => {
       return res.json({ ok: true, demo: true, token, message: 'SMTP não configurado. Código retornado para demonstração.' });
     }
 
-    const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: parseInt(smtpPort),
@@ -1562,7 +1562,6 @@ app.post('/send-email-summary', authenticateToken, async (req, res) => {
   }
 
   try {
-    const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: parseInt(smtpPort),
