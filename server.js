@@ -90,6 +90,29 @@ const setConfig = async (secao, parametro, valor) => {
   );
 };
 
+/** Monta configurações SMTP (env vars > banco) com timeout e limpeza. */
+const getSmtpConfig = async () => {
+  const host   = process.env.SMTP_HOST   || await getConfig('SMTP', 'HOST',   'smtp.gmail.com');
+  const port   = parseInt(process.env.SMTP_PORT   || await getConfig('SMTP', 'PORT',   '587'));
+  const secure = (process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false')) === 'true';
+  const user   = process.env.SMTP_USER   || await getConfig('SMTP', 'USER',   '');
+  // Remove espaços — senhas de app do Google são exibidas com espaços mas devem ser enviadas sem
+  const pass   = (process.env.SMTP_PASS  || await getConfig('SMTP', 'PASS',   '')).replace(/\s/g, '');
+  const from   = process.env.SMTP_FROM   || await getConfig('SMTP', 'FROM',   user);
+  return { host, port, secure, user, pass, from };
+};
+
+/** Cria transporter nodemailer com timeout de 15s. */
+const buildTransporter = (cfg) => nodemailer.createTransport({
+  host: cfg.host,
+  port: cfg.port,
+  secure: cfg.secure,
+  auth: { user: cfg.user, pass: cfg.pass },
+  connectionTimeout: 15000,
+  greetingTimeout:   15000,
+  socketTimeout:     15000,
+});
+
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -341,7 +364,7 @@ const initializeDatabase = async () => {
       ['SMTP', 'PORT', '587'],
       ['SMTP', 'SECURE', 'false'],
       ['SMTP', 'USER', 'jrinfosistemas@gmail.com'],
-      ['SMTP', 'PASS', 'lofn zczm bcld emoc'],
+      ['SMTP', 'PASS', 'lofnzczmblcdemoc'],
       ['SMTP', 'FROM', 'jrinfosistemas@gmail.com'],
     ];
     for (const [secao, parametro, valor] of smtpDefaults) {
@@ -724,31 +747,30 @@ app.post('/auth/forgot-password', async (req, res) => {
     const expiry = Date.now() + 15 * 60 * 1000;
     passwordResetTokens.set(email.toLowerCase().trim(), { token, expiry });
 
-    const smtpHost = process.env.SMTP_HOST || await getConfig('SMTP', 'HOST', 'smtp.gmail.com');
-    const smtpUser = process.env.SMTP_USER || await getConfig('SMTP', 'USER', '');
-    const smtpPass = process.env.SMTP_PASS || await getConfig('SMTP', 'PASS', '');
-    const smtpPort = process.env.SMTP_PORT || await getConfig('SMTP', 'PORT', '587');
-    const smtpSecure = process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false');
-    const smtpFrom = process.env.SMTP_FROM || await getConfig('SMTP', 'FROM', smtpUser);
-
-    if (!smtpUser || !smtpPass) {
-      console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
-      return res.json({ ok: true, demo: true, token, message: 'SMTP não configurado. Código retornado para demonstração.' });
+    let smtpOk = false;
+    try {
+      const smtp = await getSmtpConfig();
+      if (smtp.user && smtp.pass) {
+        const transporter = buildTransporter(smtp);
+        await transporter.sendMail({
+          from: `"Gestor Financeiro" <${smtp.from}>`,
+          to: email,
+          subject: '🔑 Código de recuperação de senha — Gestor Financeiro',
+          html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`,
+        });
+        console.log(`📧 E-mail de reset enviado para ${email}`);
+        smtpOk = true;
+      }
+    } catch (smtpErr) {
+      console.error('SMTP erro (forgot-password):', smtpErr.message);
     }
 
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: parseInt(smtpPort),
-      secure: smtpSecure === 'true',
-      auth: { user: smtpUser, pass: smtpPass },
-    });
-    await transporter.sendMail({
-      from: `"Gestor Financeiro" <${smtpFrom}>`,
-      to: email,
-      subject: '🔑 Código de recuperação de senha — Gestor Financeiro',
-      html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`,
-    });
-    console.log(`📧 E-mail de reset enviado para ${email}`);
+    if (!smtpOk) {
+      // Fallback demo: devolve o código para não bloquear o usuário
+      console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
+      return res.json({ ok: true, demo: true, token, message: 'Código retornado (SMTP indisponível).' });
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro em forgot-password:', err.message);
@@ -1548,28 +1570,18 @@ app.post('/send-email-summary', authenticateToken, async (req, res) => {
   </div>
 </body></html>`;
 
-  // Ler configurações SMTP: env vars têm prioridade; fallback no banco
-  const smtpHost = process.env.SMTP_HOST || await getConfig('SMTP', 'HOST', 'smtp.gmail.com');
-  const smtpUser = process.env.SMTP_USER || await getConfig('SMTP', 'USER', '');
-  const smtpPass = process.env.SMTP_PASS || await getConfig('SMTP', 'PASS', '');
-  const smtpPort = process.env.SMTP_PORT || await getConfig('SMTP', 'PORT', '587');
-  const smtpSecure = process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false');
-  const smtpFrom = process.env.SMTP_FROM || await getConfig('SMTP', 'FROM', smtpUser);
+  // Ler configurações SMTP via helper (env vars > banco, strip espaços, timeout)
+  const smtp = await getSmtpConfig();
 
-  if (!smtpUser || !smtpPass) {
+  if (!smtp.user || !smtp.pass) {
     console.log(`📧 [EMAIL DEMO] Para: ${email} | ${notifications.length} notificações — SMTP não configurado.`);
     return res.json({ ok: true, demo: true, message: 'SMTP não configurado. Configure em Admin → Configurações.' });
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: parseInt(smtpPort),
-      secure: smtpSecure === 'true',
-      auth: { user: smtpUser, pass: smtpPass },
-    });
+    const transporter = buildTransporter(smtp);
     await transporter.sendMail({
-      from: `"Gestor Financeiro" <${smtpFrom}>`,
+      from: `"Gestor Financeiro" <${smtp.from}>`,
       to: email,
       subject: `🔔 Resumo de Notificações — Gestor Financeiro (${notifications.length})`,
       html,
