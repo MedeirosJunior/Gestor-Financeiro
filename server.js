@@ -13,6 +13,9 @@ const SALT_ROUNDS = 10;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'junior395@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'j991343519*/*';
 
+// Tokens de reset em memória: email → { token, expiry }
+const passwordResetTokens = new Map();
+
 // ============ VALIDAÇÃO ============
 const MAX_VALUE = 999_999_999;
 const VALID_TRANSACTION_TYPES = ['entrada', 'despesa'];
@@ -653,6 +656,78 @@ app.post('/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Erro no login:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ RECUPERAÇÃO DE SENHA (rotas públicas) ============
+app.post('/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !isValidEmail(email)) return badRequest(res, ['E-mail inválido']);
+
+  try {
+    const user = await dbGet('SELECT id, name FROM users WHERE email = ?', [email.toLowerCase().trim()]);
+    if (!user) {
+      // Não revelar se e-mail existe
+      return res.json({ ok: true, message: 'Se o e-mail estiver cadastrado, você receberá o código.' });
+    }
+
+    // Código de 6 dígitos, válido por 15 minutos
+    const token = String(Math.floor(100000 + Math.random() * 900000));
+    const expiry = Date.now() + 15 * 60 * 1000;
+    passwordResetTokens.set(email.toLowerCase().trim(), { token, expiry });
+
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
+      return res.json({ ok: true, demo: true, token, message: 'SMTP não configurado. Código retornado para demonstração.' });
+    }
+
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({
+      from: `"Gestor Financeiro" <${process.env.SMTP_FROM || smtpUser}>`,
+      to: email,
+      subject: '🔑 Código de recuperação de senha — Gestor Financeiro',
+      html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`,
+    });
+    console.log(`📧 E-mail de reset enviado para ${email}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro em forgot-password:', err.message);
+    res.status(500).json({ error: 'Erro ao processar solicitação' });
+  }
+});
+
+app.post('/auth/reset-password', async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  if (!email || !token || !newPassword) return badRequest(res, ['Campos obrigatórios ausentes']);
+  if (newPassword.length < 6) return badRequest(res, ['Senha deve ter pelo menos 6 caracteres']);
+  if (newPassword.length > 200) return badRequest(res, ['Senha deve ter no máximo 200 caracteres']);
+
+  const key = String(email).toLowerCase().trim();
+  const stored = passwordResetTokens.get(key);
+
+  if (!stored || stored.token !== String(token).trim() || Date.now() > stored.expiry) {
+    return res.status(400).json({ error: 'Código inválido ou expirado. Solicite um novo.' });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await dbRun('UPDATE users SET password = ? WHERE email = ?', [hashed, key]);
+    passwordResetTokens.delete(key);
+    console.log(`🔑 Senha redefinida para ${email}`);
+    res.json({ ok: true, message: 'Senha alterada com sucesso!' });
+  } catch (err) {
+    console.error('Erro em reset-password:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

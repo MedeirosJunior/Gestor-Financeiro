@@ -1920,6 +1920,14 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
     email: '',
     password: ''
   });
+  // Recuperação de senha
+  const [forgotStep, setForgotStep] = useState(null); // null | 'email' | 'reset'
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [demoCode, setDemoCode] = useState('');
 
   // Otimizar handleSubmit com useCallback para API
   const handleSubmit = useCallback(async (e) => {
@@ -1972,10 +1980,67 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
     setCredentials(prev => ({ ...prev, password: e.target.value }));
   }, []);
 
+  const handleForgotRequest = useCallback(async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      const resp = await fetch(`${config.API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        if (data.demo && data.token) {
+          setDemoCode(data.token);
+          setForgotCode(data.token);
+        }
+        setForgotStep('reset');
+        toast.success(data.demo ? '⚠️ Modo demo: código exibido na tela' : 'Código enviado para o e-mail!');
+      } else {
+        toast.error(data.error || 'Erro ao solicitar recuperação');
+      }
+    } catch {
+      toast.error('Erro de conexão. Tente novamente.');
+    } finally {
+      setForgotLoading(false);
+    }
+  }, [forgotEmail]);
+
+  const handleResetPassword = useCallback(async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) { toast.error('As senhas não coincidem.'); return; }
+    if (newPassword.length < 6) { toast.error('Senha deve ter pelo menos 6 caracteres.'); return; }
+    setForgotLoading(true);
+    try {
+      const resp = await fetch(`${config.API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, token: forgotCode, newPassword })
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        toast.success('Senha alterada com sucesso! Faça login.');
+        setForgotStep(null);
+        setForgotCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setDemoCode('');
+      } else {
+        toast.error(data.error || 'Código inválido ou expirado');
+      }
+    } catch {
+      toast.error('Erro de conexão. Tente novamente.');
+    } finally {
+      setForgotLoading(false);
+    }
+  }, [forgotEmail, forgotCode, newPassword, confirmPassword]);
+
   return (
     <div className="login-container">
       <div className="login-box">
         <h1>ðŸ’° Gestor Financeiro</h1>
+        {!forgotStep && (<>
         <h2>ðŸ” Login</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -2006,6 +2071,79 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
             Entrar
           </ButtonSpinner>
         </form>
+        <div className="forgot-link-wrap">
+          <button
+            type="button"
+            className="forgot-link"
+            onClick={() => { setForgotStep('email'); setForgotEmail(credentials.email || ''); }}
+          >
+            🔑 Esqueceu a senha?
+          </button>
+        </div>
+        </>)}
+
+        {forgotStep === 'email' && (
+          <form onSubmit={handleForgotRequest} className="forgot-form">
+            <h2>🔑 Recuperar Senha</h2>
+            <p className="forgot-info">Informe seu e-mail para receber o código (válido por 15 min).</p>
+            <div className="form-group">
+              <label>📧 E-mail cadastrado:</label>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                placeholder="Digite seu e-mail"
+                required
+                autoFocus
+              />
+            </div>
+            <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
+              Enviar Código
+            </ButtonSpinner>
+            <button type="button" className="forgot-back-btn" onClick={() => setForgotStep(null)}>
+              ← Voltar ao login
+            </button>
+          </form>
+        )}
+
+        {forgotStep === 'reset' && (
+          <form onSubmit={handleResetPassword} className="forgot-form">
+            <h2>🔑 Nova Senha</h2>
+            {demoCode && (
+              <div className="demo-code-box">
+                ⚠️ Modo demo — Código: <strong>{demoCode}</strong>
+              </div>
+            )}
+            <div className="form-group">
+              <label>🔑 Código recebido:</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={forgotCode}
+                onChange={e => setForgotCode(e.target.value)}
+                placeholder="000000"
+                maxLength={6}
+                required
+                autoFocus
+                style={{ letterSpacing: '6px', fontSize: '1.3rem', textAlign: 'center' }}
+              />
+            </div>
+            <div className="form-group">
+              <label>🔒 Nova senha:</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} />
+            </div>
+            <div className="form-group">
+              <label>🔒 Confirmar nova senha:</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" required />
+            </div>
+            <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
+              Redefinir Senha
+            </ButtonSpinner>
+            <button type="button" className="forgot-back-btn" onClick={() => setForgotStep('email')}>
+              ← Voltar
+            </button>
+          </form>
+        )}
 
         <div className="login-info">
           <p><strong>Sistema:</strong> Gestor Financeiro</p>
