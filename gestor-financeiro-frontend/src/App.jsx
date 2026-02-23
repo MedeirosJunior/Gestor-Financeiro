@@ -1410,6 +1410,7 @@ function App() {
               transactions={transactions}
               loadingExport={loadingExport}
               setLoadingExport={setLoadingExport}
+              categories={categories}
             />
           )}
           {activeTab === 'historico' && (
@@ -2155,6 +2156,16 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
   const getCatIds = (name) =>
     categoriasDesp.filter(c => c.name.toLowerCase() === name.toLowerCase()).map(c => c.id);
 
+  const allCatsFlat = useMemo(() =>
+    [...(categories?.entrada || []), ...(categories?.despesa || [])],
+    [categories]
+  );
+  const resolveCat = (id) => {
+    if (!id || id === 'transferencia') return id === 'transferencia' ? 'Transferência' : id;
+    const found = allCatsFlat.find(c => c.id === id);
+    return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
+  };
+
   // Transações do mês atual
   const monthlyTransactions = useMemo(() =>
     transactions.filter(t => t.date.startsWith(currentMonth)),
@@ -2356,7 +2367,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
                 </span>
                 <div className="transaction-details">
                   <span className="transaction-description">{transaction.description}</span>
-                  <span className="transaction-category">🏷️ {transaction.category}</span>
+                  <span className="transaction-category">🏷️ {resolveCat(transaction.category)}</span>
                 </div>
               </div>
               <div className="transaction-amount">
@@ -3419,7 +3430,17 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
 });
 
 // Relatórios mensais
-function Relatorios({ transactions, loadingExport, setLoadingExport }) {
+function Relatorios({ transactions, loadingExport, setLoadingExport, categories }) {
+  const allCatsFlat = useMemo(() =>
+    [...(categories?.entrada || []), ...(categories?.despesa || [])],
+    [categories]
+  );
+  const resolveCatName = (id) => {
+    if (!id) return id;
+    if (id === 'transferencia') return 'Transferência';
+    const found = allCatsFlat.find(c => c.id === id);
+    return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
+  };
   const [reportMode, setReportMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
@@ -3436,7 +3457,8 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
 
   const categoriesData = {};
   despesas.forEach(t => {
-    categoriesData[t.category] = (categoriesData[t.category] || 0) + parseFloat(t.value);
+    const catKey = resolveCatName(t.category);
+    categoriesData[catKey] = (categoriesData[catKey] || 0) + parseFloat(t.value);
   });
 
   // Dados anuais consolidados
@@ -3481,7 +3503,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
         transacoesData.push([
           new Date(t.date).toLocaleDateString('pt-BR'),
           t.description,
-          t.category,
+          resolveCatName(t.category),
           t.type === 'entrada' ? 'Entrada' : 'Despesa',
           parseFloat(t.value).toFixed(2)
         ]);
@@ -3563,7 +3585,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport }) {
           body: monthlyData.map(t => [
             new Date(t.date).toLocaleDateString('pt-BR'),
             t.description,
-            t.category,
+            resolveCatName(t.category),
             t.type === 'entrada' ? 'Entrada' : 'Despesa',
             `R$ ${parseFloat(t.value).toFixed(2)}`
           ]),
@@ -3861,6 +3883,13 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [transactions, categories]);
 
+  const getCatLabel = (id) => {
+    if (!id) return id;
+    if (id === 'transferencia') return 'Transferência';
+    const found = allCategoryOptions.find(c => c.id === id);
+    return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
+  };
+
   const startEdit = (transaction) => {
     setEditingId(transaction.id);
     setEditForm({
@@ -3927,7 +3956,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         historicoData.push([
           new Date(t.date).toLocaleDateString('pt-BR'),
           t.description,
-          t.category,
+          getCatLabel(t.category),
           t.type === 'entrada' ? 'Entrada' : 'Despesa',
           parseFloat(t.value).toFixed(2)
         ]);
@@ -3978,7 +4007,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         body: filteredTransactions.map(t => [
           new Date(t.date).toLocaleDateString('pt-BR'),
           t.description,
-          t.category,
+          getCatLabel(t.category),
           t.type === 'entrada' ? 'Entrada' : 'Despesa',
           `R$ ${parseFloat(t.value).toFixed(2)}`
         ]),
@@ -4140,7 +4169,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
                   <p>
                     {transaction.category === 'transferencia'
                       ? <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Transferência</span>
-                      : transaction.category}
+                      : getCatLabel(transaction.category)}
                     {transaction.wallet_id && wallets.length > 0 && (() => {
                       const w = wallets.find(ww => ww.id === parseInt(transaction.wallet_id));
                       return w ? <span className="tx-wallet-badge"> • 🏦 {w.name}</span> : null;
