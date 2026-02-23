@@ -1418,7 +1418,7 @@ function App() {
     setSendingEmail(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(API_URL + '/send-email-summary', {
+      const res = await fetch(config.API_URL + '/send-email-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ email: emailInput, notifications: allNotifications }),
