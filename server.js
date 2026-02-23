@@ -581,7 +581,7 @@ app.post('/auth/login', async (req, res) => {
   const errors = buildErrors([
     [!email || !password, 'Email e senha são obrigatórios'],
     [email && !isValidEmail(email), 'Formato de e-mail inválido'],
-    [password && (sanitize(password, 0).length === 0 || String(password).length > 200), 'Senha inválida']
+    [password && String(password).length > 200, 'Senha deve ter no máximo 200 caracteres']
   ]);
   if (errors.length) return badRequest(res, errors);
 
