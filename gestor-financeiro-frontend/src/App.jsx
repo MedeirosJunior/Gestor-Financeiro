@@ -3441,6 +3441,15 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
     const found = allCatsFlat.find(c => c.id === id);
     return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
   };
+  // Versão sem emoji para PDFs (jsPDF não suporta unicode emoji)
+  const resolveCatNamePdf = (id) => {
+    if (!id) return id;
+    if (id === 'transferencia') return 'Transferencia';
+    const found = allCatsFlat.find(c => c.id === id);
+    return found ? found.name : id;
+  };
+  // Remove emoji/unicode especial para uso em PDFs
+  const stripEmojiPdf = (s) => String(s).replace(/[^\u0000-\u024F]/g, '').trim();
   const [reportMode, setReportMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
@@ -3585,7 +3594,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
           body: monthlyData.map(t => [
             new Date(t.date).toLocaleDateString('pt-BR'),
             t.description,
-            resolveCatName(t.category),
+            resolveCatNamePdf(t.category),
             t.type === 'entrada' ? 'Entrada' : 'Despesa',
             `R$ ${parseFloat(t.value).toFixed(2)}`
           ]),
@@ -3603,7 +3612,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
             startY: doc.lastAutoTable.finalY + 16,
             head: [['Categoria', 'Valor (R$)', 'Percentual']],
             body: sortedCats.map(([cat, val]) => [
-              cat,
+              stripEmojiPdf(cat),
               `R$ ${val.toFixed(2)}`,
               `${totalDespesas > 0 ? ((val / totalDespesas) * 100).toFixed(1) : 0}%`
             ]),
@@ -3889,6 +3898,13 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     const found = allCategoryOptions.find(c => c.id === id);
     return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
   };
+  // Versão sem emoji para PDFs (jsPDF não suporta unicode emoji)
+  const getCatLabelPdf = (id) => {
+    if (!id) return id;
+    if (id === 'transferencia') return 'Transferencia';
+    const found = allCategoryOptions.find(c => c.id === id);
+    return found ? found.name : id;
+  };
 
   const startEdit = (transaction) => {
     setEditingId(transaction.id);
@@ -4007,7 +4023,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         body: filteredTransactions.map(t => [
           new Date(t.date).toLocaleDateString('pt-BR'),
           t.description,
-          getCatLabel(t.category),
+          getCatLabelPdf(t.category),
           t.type === 'entrada' ? 'Entrada' : 'Despesa',
           `R$ ${parseFloat(t.value).toFixed(2)}`
         ]),
