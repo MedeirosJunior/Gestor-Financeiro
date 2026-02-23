@@ -427,6 +427,41 @@ app.post('/transactions/batch', async (req, res) => {
   }
 });
 
+// Importação em lote de extrato CSV
+app.post('/transactions/import', authenticateToken, async (req, res) => {
+  const { transactions: batch, userId } = req.body;
+
+  if (!userId) return badRequest(res, ['"userId" é obrigatório']);
+  if (!Array.isArray(batch) || batch.length === 0)
+    return badRequest(res, ['"transactions" deve ser um array não vazio']);
+  if (batch.length > 2000)
+    return badRequest(res, ['Máximo de 2000 transações por importação']);
+
+  for (let i = 0; i < batch.length; i++) {
+    const txErrors = validateTx(batch[i]);
+    if (txErrors.length)
+      return badRequest(res, [`Linha ${i + 1}: ${txErrors[0]}`]);
+  }
+
+  try {
+    const ids = [];
+    for (const tx of batch) {
+      const desc = sanitize(tx.description, 200);
+      const cat = sanitize(tx.category, 100);
+      const result = await dbRun(
+        'INSERT INTO transactions (type, description, category, value, date, userId) VALUES (?, ?, ?, ?, ?, ?)',
+        [tx.type, desc, cat, parseFloat(tx.value), tx.date, userId]
+      );
+      ids.push(result.id);
+    }
+    setTimeout(() => backupData(), 100);
+    res.json({ message: `${ids.length} transação(ões) importada(s) com sucesso`, count: ids.length, ids });
+  } catch (error) {
+    console.error('Erro ao importar transações:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/transactions', async (req, res) => {
   const { userId, page, limit } = req.query;
 

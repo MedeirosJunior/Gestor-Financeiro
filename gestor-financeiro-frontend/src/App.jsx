@@ -1369,6 +1369,12 @@ function App() {
           >
             🏆 Metas
           </button>
+          <button
+            className={activeTab === 'importar' ? 'active' : ''}
+            onClick={() => setActiveTab('importar')}
+          >
+            📥 Importar
+          </button>
         </nav>
       </header>
       <main className="main">
@@ -1473,6 +1479,14 @@ function App() {
           )}
           {activeTab === 'usuarios' && isAdmin && (
             <GerenciarUsuarios />
+          )}
+          {activeTab === 'importar' && (
+            <ImportarCSV
+              categories={categories}
+              currentUser={currentUser}
+              isApiAvailable={isApiAvailable}
+              onImportDone={fetchTransactions}
+            />
           )}
         </Suspense>
       </main>
@@ -4245,5 +4259,299 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     </div>
   );
 });
+
+// ─── Importar Extrato CSV ──────────────────────────────────────────────────
+function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) {
+  const [step, setStep] = useState('upload'); // 'upload' | 'map' | 'preview' | 'done'
+  const [rawRows, setRawRows] = useState([]); // todos os rows do CSV (sem header)
+  const [headers, setHeaders] = useState([]); // nomes das colunas detectados
+  const [mapping, setMapping] = useState({ date: '', description: '', value: '', type: '' });
+  const [defaultCatDesp, setDefaultCatDesp] = useState('');
+  const [defaultCatEnt, setDefaultCatEnt] = useState('');
+  const [preview, setPreview] = useState([]);  // transações parseadas
+  const [importing, setImporting] = useState(false);
+  const [fileName, setFileName] = useState('');
+
+  const catDesp = categories?.despesa || [];
+  const catEnt  = categories?.entrada  || [];
+
+  // Detecta o delimitador mais frequente entre , ; \t |
+  const detectDelimiter = (line) => {
+    const candidates = [',', ';', '\t', '|'];
+    let best = ','; let bestCount = 0;
+    candidates.forEach(d => {
+      const c = (line.split(d).length - 1);
+      if (c > bestCount) { bestCount = c; best = d; }
+    });
+    return best;
+  };
+
+  // Normaliza valor brasileiro ("1.234,56" ou "-1234.56" ou "1234,56") para float
+  const parseBRValue = (raw) => {
+    if (!raw) return NaN;
+    let s = String(raw).trim().replace(/\s/g, '');
+    // Remove símbolo de moeda
+    s = s.replace(/^[R$\s]+/, '').replace(/^-[R$\s]+/, '-');
+    // Se tem vírgula como decimal e ponto como milhar: 1.234,56
+    if (/\d+\.\d{3},\d+/.test(s) || (/,\d{1,2}$/.test(s) && s.includes('.'))) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (/,\d+$/.test(s)) {
+      // vírgula como decimal, sem ponto milhar
+      s = s.replace(',', '.');
+    }
+    return parseFloat(s);
+  };
+
+  // Normaliza data para YYYY-MM-DD
+  const parseDate = (raw) => {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    // DD/MM/YYYY ou DD-MM-YYYY
+    const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmY) return `${dmY[3]}-${dmY[2].padStart(2,'0')}-${dmY[1].padStart(2,'0')}`;
+    // YYYY-MM-DD ou YYYY/MM/DD
+    const Ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (Ymd) return `${Ymd[1]}-${Ymd[2].padStart(2,'0')}-${Ymd[3].padStart(2,'0')}`;
+    // MM/DD/YYYY
+    const mdY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdY) return `${mdY[3]}-${mdY[1].padStart(2,'0')}-${mdY[2].padStart(2,'0')}`;
+    return '';
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      // Remove BOM se existir
+      const clean = text.replace(/^\uFEFF/, '');
+      const lines = clean.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast.error('Arquivo CSV deve ter ao menos 2 linhas (cabeçalho + dados).'); return; }
+      const delim = detectDelimiter(lines[0]);
+      const parseLine = (line) => {
+        const result = []; let cur = ''; let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === delim && !inQ) { result.push(cur.trim()); cur = ''; }
+          else { cur += ch; }
+        }
+        result.push(cur.trim());
+        return result;
+      };
+      const hdr = parseLine(lines[0]).map(h => h.replace(/^"|"$/g,''));
+      const rows = lines.slice(1).map(parseLine).filter(r => r.some(c => c.trim()));
+      setHeaders(hdr);
+      setRawRows(rows);
+      // Auto-detect mapping por nome de coluna
+      const lh = hdr.map(h => h.toLowerCase());
+      const autoMap = {};
+      autoMap.date        = String(lh.findIndex(h => /data|date|dt/.test(h)));
+      autoMap.description = String(lh.findIndex(h => /descri|hist.rico|memo|narr|title/.test(h)));
+      autoMap.value       = String(lh.findIndex(h => /valor|value|amount|quantia|cred|deb/.test(h)));
+      autoMap.type        = String(lh.findIndex(h => /tipo|type/.test(h)));
+      // Se não achou coluna de tipo, será detectado pelo sinal do valor
+      setMapping({
+        date:        autoMap.date        !== '-1' ? autoMap.date        : '',
+        description: autoMap.description !== '-1' ? autoMap.description : '',
+        value:       autoMap.value       !== '-1' ? autoMap.value       : '',
+        type:        autoMap.type        !== '-1' ? autoMap.type        : '',
+      });
+      // Default categorias
+      setDefaultCatDesp(catDesp[catDesp.length - 1]?.id || '');
+      setDefaultCatEnt (catEnt [catEnt.length  - 1]?.id || '');
+      setStep('map');
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const buildPreview = () => {
+    const di = parseInt(mapping.date);
+    const si = parseInt(mapping.description);
+    const vi = parseInt(mapping.value);
+    const ti = mapping.type !== '' ? parseInt(mapping.type) : -1;
+    if (isNaN(di) || isNaN(si) || isNaN(vi)) { toast.error('Selecione as colunas de Data, Descrição e Valor.'); return; }
+    const parsed = [];
+    const errors = [];
+    rawRows.forEach((row, idx) => {
+      const rawDate  = row[di] || '';
+      const rawDesc  = row[si] || '';
+      const rawVal   = row[vi] || '';
+      const rawType  = ti >= 0 ? row[ti] || '' : '';
+      const date = parseDate(rawDate);
+      const val  = parseBRValue(rawVal);
+      if (!date)       { errors.push(`Linha ${idx + 2}: data inválida "${rawDate}"`); return; }
+      if (isNaN(val))  { errors.push(`Linha ${idx + 2}: valor inválido "${rawVal}"`); return; }
+      if (!rawDesc.trim()) { errors.push(`Linha ${idx + 2}: descrição vazia`); return; }
+      let type;
+      if (rawType) {
+        const lt = rawType.toLowerCase();
+        type = (lt.includes('entr') || lt.includes('cred') || lt === 'c') ? 'entrada' : 'despesa';
+      } else {
+        type = val >= 0 ? 'entrada' : 'despesa';
+      }
+      const category = type === 'entrada' ? defaultCatEnt : defaultCatDesp;
+      parsed.push({ type, description: rawDesc.trim(), category, value: Math.abs(val).toFixed(2), date });
+    });
+    if (errors.length > 0) {
+      toast.error(`${errors.length} linha(s) com erro. Ex: ${errors[0]}`);
+      if (errors.length === rawRows.length) return;
+    }
+    if (parsed.length === 0) { toast.error('Nenhuma transação válida encontrada.'); return; }
+    setPreview(parsed);
+    setStep('preview');
+  };
+
+  const handleImport = async () => {
+    if (!isApiAvailable) { toast.error('Servidor offline. Não é possível importar.'); return; }
+    if (!currentUser?.email) { toast.error('Usuário não autenticado.'); return; }
+    setImporting(true);
+    try {
+      const res = await fetch(`${config.API_URL}/transactions/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactions: preview, userId: currentUser.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+      toast.success(`✅ ${data.count} transação(ões) importada(s) com sucesso!`);
+      onImportDone();
+      setStep('done');
+    } catch (err) {
+      toast.error(`Erro na importação: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const reset = () => {
+    setStep('upload'); setRawRows([]); setHeaders([]); setPreview([]);
+    setFileName(''); setMapping({ date: '', description: '', value: '', type: '' });
+  };
+
+  const colOptions = headers.map((h, i) => ({ label: h || `Coluna ${i + 1}`, value: String(i) }));
+
+  return (
+    <div className="importar-csv">
+      <h2>📥 Importar Extrato CSV</h2>
+
+      {step === 'upload' && (
+        <div className="import-upload-area">
+          <div className="import-info">
+            <p>Importe transações a partir de um arquivo <strong>CSV</strong> exportado do seu banco.</p>
+            <ul>
+              <li>Formatos de data suportados: <code>DD/MM/AAAA</code>, <code>AAAA-MM-DD</code></li>
+              <li>Formatos de valor: <code>1.234,56</code> ou <code>1234.56</code> (negativo = despesa)</li>
+              <li>Delimitadores: vírgula, ponto-e-vírgula ou tabulação</li>
+              <li>Máximo de 2.000 transações por importação</li>
+            </ul>
+          </div>
+          <label className="import-file-label">
+            <span>📂 Selecionar arquivo CSV</span>
+            <input type="file" accept=".csv,.txt" onChange={handleFile} />
+          </label>
+        </div>
+      )}
+
+      {step === 'map' && (
+        <div className="import-map">
+          <div className="import-map-header">
+            <span>📄 <strong>{fileName}</strong> — {rawRows.length} linhas detectadas</span>
+            <button className="cancel-btn" onClick={reset}>🔄 Trocar arquivo</button>
+          </div>
+          <p className="import-map-hint">Selecione qual coluna do CSV corresponde a cada campo:</p>
+          <div className="import-map-grid">
+            {[
+              { key: 'date',        label: '📅 Data',       required: true  },
+              { key: 'description', label: '📝 Descrição',  required: true  },
+              { key: 'value',       label: '💲 Valor',      required: true  },
+              { key: 'type',        label: '↕️ Tipo',       required: false },
+            ].map(({ key, label, required }) => (
+              <div key={key} className="import-map-field">
+                <label>{label} {required && <span className="required">*</span>}</label>
+                <select value={mapping[key]} onChange={e => setMapping(m => ({ ...m, [key]: e.target.value }))}>
+                  <option value="">{key === 'type' ? 'Auto (pelo sinal do valor)' : '— Selecione —'}</option>
+                  {colOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            ))}
+            <div className="import-map-field">
+              <label>🏷️ Categoria padrão (Despesas)</label>
+              <select value={defaultCatDesp} onChange={e => setDefaultCatDesp(e.target.value)}>
+                {catDesp.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              </select>
+            </div>
+            <div className="import-map-field">
+              <label>🏷️ Categoria padrão (Entradas)</label>
+              <select value={defaultCatEnt} onChange={e => setDefaultCatEnt(e.target.value)}>
+                {catEnt.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Preview das primeiras 3 linhas do CSV bruto */}
+          <div className="import-raw-preview">
+            <p><strong>Prévia do arquivo:</strong></p>
+            <div className="import-table-wrap">
+              <table>
+                <thead><tr>{headers.map((h,i) => <th key={i}>{h || `Col ${i+1}`}</th>)}</tr></thead>
+                <tbody>
+                  {rawRows.slice(0, 3).map((row, ri) => (
+                    <tr key={ri}>{headers.map((_, ci) => <td key={ci}>{row[ci] || ''}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <button className="submit-btn" onClick={buildPreview}>🔍 Visualizar Transações</button>
+        </div>
+      )}
+
+      {step === 'preview' && (
+        <div className="import-preview">
+          <div className="import-preview-header">
+            <span>✅ <strong>{preview.length}</strong> transações prontas para importar</span>
+            <button className="cancel-btn" onClick={() => setStep('map')}>← Voltar ao mapeamento</button>
+          </div>
+          <div className="import-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th></tr>
+              </thead>
+              <tbody>
+                {preview.slice(0, 50).map((t, i) => (
+                  <tr key={i} className={t.type}>
+                    <td>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td>{t.description}</td>
+                    <td>{t.category}</td>
+                    <td><span className={`type-badge ${t.type}`}>{t.type === 'entrada' ? '⬆️ Entrada' : '⬇️ Despesa'}</span></td>
+                    <td className={`val ${t.type}`}>{t.type === 'entrada' ? '+' : '-'}R$ {parseFloat(t.value).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {preview.length > 50 && <p className="import-more-hint">…e mais {preview.length - 50} transações não exibidas.</p>}
+          <div className="import-actions">
+            <button className="submit-btn" onClick={handleImport} disabled={importing}>
+              {importing ? '⏳ Importando...' : `📥 Importar ${preview.length} transações`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="import-done">
+          <div className="import-done-icon">✅</div>
+          <h3>Importação concluída!</h3>
+          <p>As transações foram adicionadas ao seu histórico.</p>
+          <button className="submit-btn" onClick={reset}>📂 Importar outro arquivo</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default App;
