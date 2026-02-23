@@ -355,8 +355,12 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [goals, setGoals] = useState([]);
-  // Estado para modo escuro
-  const [darkMode, setDarkMode] = useState(false);
+  // Estado para modo escuro — inicializa do localStorage
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  useEffect(() => {
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   // Estado para conectividade da API
   const [isApiAvailable, setIsApiAvailable] = useState(false);
@@ -1300,10 +1304,10 @@ function App() {
               <button
                 className="darkmode-btn"
                 onClick={() => setDarkMode(dm => !dm)}
-                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                title={darkMode ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                 style={{ marginLeft: '10px' }}
               >
-                {darkMode ? '🌙' : '☀️'}
+                {darkMode ? '☀️' : '🌙'}
               </button>
             </div>
           </div>
@@ -4273,7 +4277,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
   const [fileName, setFileName] = useState('');
 
   const catDesp = categories?.despesa || [];
-  const catEnt  = categories?.entrada  || [];
+  const catEnt = categories?.entrada || [];
 
   // Detecta o delimitador mais frequente entre , ; \t |
   const detectDelimiter = (line) => {
@@ -4308,13 +4312,13 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
     const s = String(raw).trim();
     // DD/MM/YYYY ou DD-MM-YYYY
     const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (dmY) return `${dmY[3]}-${dmY[2].padStart(2,'0')}-${dmY[1].padStart(2,'0')}`;
+    if (dmY) return `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`;
     // YYYY-MM-DD ou YYYY/MM/DD
     const Ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-    if (Ymd) return `${Ymd[1]}-${Ymd[2].padStart(2,'0')}-${Ymd[3].padStart(2,'0')}`;
+    if (Ymd) return `${Ymd[1]}-${Ymd[2].padStart(2, '0')}-${Ymd[3].padStart(2, '0')}`;
     // MM/DD/YYYY
     const mdY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (mdY) return `${mdY[3]}-${mdY[1].padStart(2,'0')}-${mdY[2].padStart(2,'0')}`;
+    if (mdY) return `${mdY[3]}-${mdY[1].padStart(2, '0')}-${mdY[2].padStart(2, '0')}`;
     return '';
   };
 
@@ -4341,27 +4345,27 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
         result.push(cur.trim());
         return result;
       };
-      const hdr = parseLine(lines[0]).map(h => h.replace(/^"|"$/g,''));
+      const hdr = parseLine(lines[0]).map(h => h.replace(/^"|"$/g, ''));
       const rows = lines.slice(1).map(parseLine).filter(r => r.some(c => c.trim()));
       setHeaders(hdr);
       setRawRows(rows);
       // Auto-detect mapping por nome de coluna
       const lh = hdr.map(h => h.toLowerCase());
       const autoMap = {};
-      autoMap.date        = String(lh.findIndex(h => /data|date|dt/.test(h)));
+      autoMap.date = String(lh.findIndex(h => /data|date|dt/.test(h)));
       autoMap.description = String(lh.findIndex(h => /descri|hist.rico|memo|narr|title/.test(h)));
-      autoMap.value       = String(lh.findIndex(h => /valor|value|amount|quantia|cred|deb/.test(h)));
-      autoMap.type        = String(lh.findIndex(h => /tipo|type/.test(h)));
+      autoMap.value = String(lh.findIndex(h => /valor|value|amount|quantia|cred|deb/.test(h)));
+      autoMap.type = String(lh.findIndex(h => /tipo|type/.test(h)));
       // Se não achou coluna de tipo, será detectado pelo sinal do valor
       setMapping({
-        date:        autoMap.date        !== '-1' ? autoMap.date        : '',
+        date: autoMap.date !== '-1' ? autoMap.date : '',
         description: autoMap.description !== '-1' ? autoMap.description : '',
-        value:       autoMap.value       !== '-1' ? autoMap.value       : '',
-        type:        autoMap.type        !== '-1' ? autoMap.type        : '',
+        value: autoMap.value !== '-1' ? autoMap.value : '',
+        type: autoMap.type !== '-1' ? autoMap.type : '',
       });
       // Default categorias
       setDefaultCatDesp(catDesp[catDesp.length - 1]?.id || '');
-      setDefaultCatEnt (catEnt [catEnt.length  - 1]?.id || '');
+      setDefaultCatEnt(catEnt[catEnt.length - 1]?.id || '');
       setStep('map');
     };
     reader.readAsText(file, 'UTF-8');
@@ -4376,14 +4380,14 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
     const parsed = [];
     const errors = [];
     rawRows.forEach((row, idx) => {
-      const rawDate  = row[di] || '';
-      const rawDesc  = row[si] || '';
-      const rawVal   = row[vi] || '';
-      const rawType  = ti >= 0 ? row[ti] || '' : '';
+      const rawDate = row[di] || '';
+      const rawDesc = row[si] || '';
+      const rawVal = row[vi] || '';
+      const rawType = ti >= 0 ? row[ti] || '' : '';
       const date = parseDate(rawDate);
-      const val  = parseBRValue(rawVal);
-      if (!date)       { errors.push(`Linha ${idx + 2}: data inválida "${rawDate}"`); return; }
-      if (isNaN(val))  { errors.push(`Linha ${idx + 2}: valor inválido "${rawVal}"`); return; }
+      const val = parseBRValue(rawVal);
+      if (!date) { errors.push(`Linha ${idx + 2}: data inválida "${rawDate}"`); return; }
+      if (isNaN(val)) { errors.push(`Linha ${idx + 2}: valor inválido "${rawVal}"`); return; }
       if (!rawDesc.trim()) { errors.push(`Linha ${idx + 2}: descrição vazia`); return; }
       let type;
       if (rawType) {
@@ -4464,10 +4468,10 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
           <p className="import-map-hint">Selecione qual coluna do CSV corresponde a cada campo:</p>
           <div className="import-map-grid">
             {[
-              { key: 'date',        label: '📅 Data',       required: true  },
-              { key: 'description', label: '📝 Descrição',  required: true  },
-              { key: 'value',       label: '💲 Valor',      required: true  },
-              { key: 'type',        label: '↕️ Tipo',       required: false },
+              { key: 'date', label: '📅 Data', required: true },
+              { key: 'description', label: '📝 Descrição', required: true },
+              { key: 'value', label: '💲 Valor', required: true },
+              { key: 'type', label: '↕️ Tipo', required: false },
             ].map(({ key, label, required }) => (
               <div key={key} className="import-map-field">
                 <label>{label} {required && <span className="required">*</span>}</label>
@@ -4496,7 +4500,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
             <p><strong>Prévia do arquivo:</strong></p>
             <div className="import-table-wrap">
               <table>
-                <thead><tr>{headers.map((h,i) => <th key={i}>{h || `Col ${i+1}`}</th>)}</tr></thead>
+                <thead><tr>{headers.map((h, i) => <th key={i}>{h || `Col ${i + 1}`}</th>)}</tr></thead>
                 <tbody>
                   {rawRows.slice(0, 3).map((row, ri) => (
                     <tr key={ri}>{headers.map((_, ci) => <td key={ci}>{row[ci] || ''}</td>)}</tr>

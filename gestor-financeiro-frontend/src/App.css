@@ -3848,6 +3848,7 @@ button.loading .spinner {
   margin: 0 auto;
   padding: 0 8px 40px;
 }
+
 .importar-csv h2 {
   margin-bottom: 24px;
 }
@@ -3859,88 +3860,431 @@ button.loading .spinner {
   border-radius: 12px;
   padding: 32px;
 }
-.import-info { margin-bottom: 20px; color: #94a3b8; line-height: 1.7; }
-.import-info ul { margin: 10px 0 0 20px; }
-.import-info code {
-  background: #0f172a; border-radius: 4px;
-  padding: 1px 6px; font-size: 0.88rem; color: #7dd3fc;
+
+.import-info {
+  margin-bottom: 20px;
+  color: #94a3b8;
+  line-height: 1.7;
 }
+
+.import-info ul {
+  margin: 10px 0 0 20px;
+}
+
+.import-info code {
+  background: #0f172a;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.88rem;
+  color: #7dd3fc;
+}
+
 .import-file-label {
-  display: inline-flex; align-items: center; gap: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   background: linear-gradient(135deg, #6366f1, #4f46e5);
-  color: #fff; border-radius: 8px; padding: 12px 24px;
-  cursor: pointer; font-weight: 600; font-size: 1rem;
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
   transition: opacity 0.2s;
 }
-.import-file-label:hover { opacity: 0.88; }
-.import-file-label input { display: none; }
+
+.import-file-label:hover {
+  opacity: 0.88;
+}
+
+.import-file-label input {
+  display: none;
+}
 
 /* Map step */
-.import-map { background: #1e293b; border-radius: 12px; padding: 24px; }
-.import-map-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 8px; color: #e2e8f0;
+.import-map {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 24px;
 }
-.import-map-hint { color: #94a3b8; margin-bottom: 16px; }
+
+.import-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #e2e8f0;
+}
+
+.import-map-hint {
+  color: #94a3b8;
+  margin-bottom: 16px;
+}
+
 .import-map-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px; margin-bottom: 20px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
+
 .import-map-field label {
-  display: block; font-size: 0.82rem; color: #94a3b8; margin-bottom: 5px;
+  display: block;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin-bottom: 5px;
 }
-.import-map-field .required { color: #e74c3c; }
+
+.import-map-field .required {
+  color: #e74c3c;
+}
+
 .import-map-field select {
-  width: 100%; padding: 8px 10px;
-  background: #0f172a; color: #e2e8f0;
-  border: 1px solid #334155; border-radius: 6px; font-size: 0.9rem;
+  width: 100%;
+  padding: 8px 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  font-size: 0.9rem;
 }
 
 /* Raw preview table */
-.import-raw-preview { margin-bottom: 20px; }
-.import-raw-preview p { color: #94a3b8; margin-bottom: 8px; font-size: 0.88rem; }
-.import-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #334155; }
-.import-table-wrap table {
-  width: 100%; border-collapse: collapse; font-size: 0.85rem;
+.import-raw-preview {
+  margin-bottom: 20px;
 }
+
+.import-raw-preview p {
+  color: #94a3b8;
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+}
+
+.import-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.import-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
 .import-table-wrap th {
-  background: #0f172a; color: #7dd3fc;
-  padding: 8px 12px; text-align: left; white-space: nowrap;
+  background: #0f172a;
+  color: #7dd3fc;
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
   border-bottom: 1px solid #334155;
 }
+
 .import-table-wrap td {
-  padding: 7px 12px; color: #e2e8f0; border-bottom: 1px solid #1e293b;
-  max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 7px 12px;
+  color: #e2e8f0;
+  border-bottom: 1px solid #1e293b;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.import-table-wrap tr:last-child td { border-bottom: none; }
-.import-table-wrap tr.entrada td:nth-child(4) { color: #2ecc71; }
-.import-table-wrap tr.despesa td:nth-child(4) { color: #e74c3c; }
-.import-table-wrap .val.entrada { color: #2ecc71; font-weight: 600; }
-.import-table-wrap .val.despesa { color: #e74c3c; font-weight: 600; }
+
+.import-table-wrap tr:last-child td {
+  border-bottom: none;
+}
+
+.import-table-wrap tr.entrada td:nth-child(4) {
+  color: #2ecc71;
+}
+
+.import-table-wrap tr.despesa td:nth-child(4) {
+  color: #e74c3c;
+}
+
+.import-table-wrap .val.entrada {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.import-table-wrap .val.despesa {
+  color: #e74c3c;
+  font-weight: 600;
+}
 
 /* Type badge */
 .type-badge {
-  display: inline-block; padding: 2px 8px; border-radius: 12px;
-  font-size: 0.78rem; font-weight: 600;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
-.type-badge.entrada { background: rgba(46,204,113,0.15); color: #2ecc71; }
-.type-badge.despesa { background: rgba(231,76,60,0.15);  color: #e74c3c; }
+
+.type-badge.entrada {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.type-badge.despesa {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
 
 /* Preview step */
-.import-preview { background: #1e293b; border-radius: 12px; padding: 24px; }
-.import-preview-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 8px; color: #e2e8f0;
+.import-preview {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 24px;
 }
-.import-more-hint { color: #64748b; font-size: 0.85rem; margin-top: 8px; }
-.import-actions { margin-top: 20px; }
+
+.import-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #e2e8f0;
+}
+
+.import-more-hint {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.import-actions {
+  margin-top: 20px;
+}
 
 /* Done step */
 .import-done {
-  background: #1e293b; border-radius: 12px; padding: 48px 32px;
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 48px 32px;
   text-align: center;
 }
-.import-done-icon { font-size: 3.5rem; margin-bottom: 12px; }
-.import-done h3 { margin-bottom: 8px; font-size: 1.5rem; }
-.import-done p  { color: #94a3b8; margin-bottom: 24px; }
+
+.import-done-icon {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+}
+
+.import-done h3 {
+  margin-bottom: 8px;
+  font-size: 1.5rem;
+}
+
+.import-done p {
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DARK MODE — .app.dark-mode
+   ═══════════════════════════════════════════════════════ */
+.app.dark-mode {
+  --dm-bg1:   #0f172a;
+  --dm-bg2:   #1e293b;
+  --dm-bg3:   #334155;
+  --dm-text1: #f1f5f9;
+  --dm-text2: #94a3b8;
+  --dm-border:#334155;
+}
+
+/* Página / App */
+.app.dark-mode body,
+.app.dark-mode {
+  color: var(--dm-text1);
+}
+
+/* Header & Main panel */
+.app.dark-mode .header,
+.app.dark-mode .main {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+  color: var(--dm-text1);
+}
+
+/* Botão modo escuro */
+.darkmode-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background 0.2s;
+}
+.darkmode-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* Nav buttons */
+.app.dark-mode .nav button {
+  color: var(--dm-text2);
+  background: transparent;
+}
+.app.dark-mode .nav button:hover,
+.app.dark-mode .nav button.active {
+  background: rgba(255,255,255,0.08);
+  color: var(--dm-text1);
+}
+
+/* Cards do dashboard */
+.app.dark-mode .card {
+  background: var(--dm-bg1);
+  border-color: var(--dm-border);
+  color: var(--dm-text1);
+}
+.app.dark-mode .card h3 { color: var(--dm-text2); }
+.app.dark-mode .card .value,
+.app.dark-mode .card-value,
+.app.dark-mode .card-label { color: var(--dm-text1); }
+
+/* Recent transactions (dashboard) */
+.app.dark-mode .recent-transactions {
+  background: var(--dm-bg1);
+  border: 1px solid var(--dm-border);
+}
+.app.dark-mode .recent-transactions h3 { color: var(--dm-text1); }
+.app.dark-mode .transaction-item {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+.app.dark-mode .transaction-description { color: var(--dm-text1); }
+.app.dark-mode .transaction-category,
+.app.dark-mode .transaction-date { color: var(--dm-text2); }
+.app.dark-mode .no-transactions {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+  color: var(--dm-text2);
+}
+
+/* Títulos de seção */
+.app.dark-mode h2,
+.app.dark-mode h3,
+.app.dark-mode h4 {
+  color: var(--dm-text1);
+}
+.app.dark-mode p,
+.app.dark-mode .loading { color: var(--dm-text2); }
+
+/* Formulários */
+.app.dark-mode input,
+.app.dark-mode select,
+.app.dark-mode textarea {
+  background: var(--dm-bg1);
+  color: var(--dm-text1);
+  border-color: var(--dm-border);
+}
+.app.dark-mode input::placeholder,
+.app.dark-mode textarea::placeholder { color: var(--dm-text2); }
+.app.dark-mode input:focus,
+.app.dark-mode select:focus,
+.app.dark-mode textarea:focus {
+  border-color: #6366f1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+}
+.app.dark-mode .form-group label { color: var(--dm-text2); }
+.app.dark-mode .form-container,
+.app.dark-mode .lancamento-form,
+.app.dark-mode .add-user-form,
+.app.dark-mode .edit-user-form,
+.app.dark-mode .add-goal-form,
+.app.dark-mode .add-wallet-form,
+.app.dark-mode .recurring-form {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
+/* Historico — transaction cards */
+.app.dark-mode .transaction-card {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+.app.dark-mode .transaction-card h4 { color: var(--dm-text1); }
+.app.dark-mode .transaction-card p { color: var(--dm-text2); }
+.app.dark-mode .transaction-card .date { color: var(--dm-text2); }
+.app.dark-mode .historico-summary { color: var(--dm-text2); }
+
+/* Filtros */
+.app.dark-mode .filters { gap: 8px; }
+.app.dark-mode .search-input {
+  background: var(--dm-bg1);
+  color: var(--dm-text1);
+  border-color: var(--dm-border);
+}
+
+/* Relatórios */
+.app.dark-mode .chart-section,
+.app.dark-mode .report-section,
+.app.dark-mode .category-breakdown,
+.app.dark-mode .due-alerts {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+.app.dark-mode .chart-section h3 { color: var(--dm-text1); }
+
+/* Despesas recorrentes */
+.app.dark-mode .recurring-item {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+.app.dark-mode .recurring-item .item-description,
+.app.dark-mode .recurring-item .item-category { color: var(--dm-text1); }
+
+/* Orçamentos */
+.app.dark-mode .dashboard-budget-item,
+.app.dark-mode .budget-card {
+  background: var(--dm-bg1);
+  border-color: var(--dm-border);
+}
+
+/* Metas */
+.app.dark-mode .goal-card {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
+/* Contas (wallets) */
+.app.dark-mode .wallet-card {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
+/* Categorias */
+.app.dark-mode .category-item {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
+/* Painel admin */
+.app.dark-mode .users-table th { background: var(--dm-bg1); color: var(--dm-text2); }
+.app.dark-mode .users-table td { color: var(--dm-text1); border-color: var(--dm-border); }
+.app.dark-mode .users-table tr:hover td { background: var(--dm-bg3); }
+
+/* Import CSV */
+.app.dark-mode .import-upload-area { background: var(--dm-bg2); border-color: var(--dm-border); }
+.app.dark-mode .import-map,
+.app.dark-mode .import-preview,
+.app.dark-mode .import-done { background: var(--dm-bg2); }
+
+/* Badges e chips */
+.app.dark-mode .status-indicator { color: var(--dm-text1); }
+.app.dark-mode .section-header { color: var(--dm-text1); }
+
+/* Recharts — eixos e texto */
+.app.dark-mode .recharts-text,
+.app.dark-mode .recharts-cartesian-axis-tick-value { fill: var(--dm-text2) !important; }
+.app.dark-mode .recharts-cartesian-grid-horizontal line,
+.app.dark-mode .recharts-cartesian-grid-vertical line { stroke: var(--dm-border) !important; }
+.app.dark-mode .recharts-legend-item-text { color: var(--dm-text2) !important; }
+.app.dark-mode .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--dm-bg1) !important;
+  border-color: var(--dm-border) !important;
+  color: var(--dm-text1) !important;
+}
