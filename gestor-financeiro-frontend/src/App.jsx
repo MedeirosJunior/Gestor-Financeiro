@@ -340,6 +340,20 @@ const RECURRING_CAT_MAP = {
   'SaÃºde': 'sau', 'Lazer': 'laz', 'Outros': 'out-desp'
 };
 
+// Lista de moedas suportadas
+const CURRENCIES = [
+  { code: 'BRL', symbol: 'R$', flag: '🇧🇷', name: 'Real Brasileiro' },
+  { code: 'USD', symbol: '$', flag: '🇺🇸', name: 'Dolar Americano' },
+  { code: 'EUR', symbol: '€', flag: '🇪🇺', name: 'Euro' },
+  { code: 'GBP', symbol: '£', flag: '🇬🇧', name: 'Libra Esterlina' },
+  { code: 'ARS', symbol: '$', flag: '🇦🇷', name: 'Peso Argentino' },
+  { code: 'JPY', symbol: '¥', flag: '🇯🇵', name: 'Iene Japones' },
+  { code: 'CLP', symbol: '$', flag: '🇨🇱', name: 'Peso Chileno' },
+  { code: 'MXN', symbol: '$', flag: '🇲🇽', name: 'Peso Mexicano' },
+  { code: 'PYG', symbol: 'Gs', flag: '🇵🇾', name: 'Guarani Paraguaio' },
+  { code: 'UYU', symbol: '$', flag: '🇺🇾', name: 'Peso Uruguaio' },
+];
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -371,6 +385,13 @@ function App() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Estado de moeda ativa e taxas de cambio
+  const [activeCurrency, setActiveCurrency] = useState(() => localStorage.getItem('activeCurrency') || 'BRL');
+  const [exchangeRates, setExchangeRates] = useState({ BRL: 1 });
+  const [ratesLastUpdate, setRatesLastUpdate] = useState('');
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [currencyPanelOpen, setCurrencyPanelOpen] = useState(false);
 
   // Estado para conectividade da API
   const [isApiAvailable, setIsApiAvailable] = useState(false);
@@ -1259,6 +1280,43 @@ function App() {
     }
   }, [isAuthenticated]);
 
+  // Buscar taxas de cambio (base: BRL)
+  const fetchExchangeRates = React.useCallback(async () => {
+    setLoadingRates(true);
+    try {
+      const res = await fetch(config.API_URL + '/exchange-rates');
+      if (res.ok) {
+        const data = await res.json();
+        setExchangeRates(data.rates || { BRL: 1 });
+        setRatesLastUpdate(data.time_last_update || '');
+      }
+    } catch (e) { console.warn('exchange-rates error:', e.message); }
+    finally { setLoadingRates(false); }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchExchangeRates();
+  }, [isAuthenticated, fetchExchangeRates]);
+
+  useEffect(() => {
+    localStorage.setItem('activeCurrency', activeCurrency);
+  }, [activeCurrency]);
+
+  // Converte valor de BRL para moeda ativa
+  const convertCurrency = React.useCallback((brlValue) => {
+    if (activeCurrency === 'BRL') return brlValue;
+    const rate = exchangeRates[activeCurrency];
+    return rate ? brlValue * rate : brlValue;
+  }, [activeCurrency, exchangeRates]);
+
+  // Formata valor na moeda ativa
+  const fmtCurrency = React.useCallback((brlValue) => {
+    const curr = CURRENCIES.find(x => x.code === activeCurrency) || CURRENCIES[0];
+    const val = convertCurrency(brlValue);
+    const decimals = (activeCurrency === 'JPY' || activeCurrency === 'CLP' || activeCurrency === 'PYG') ? 0 : 2;
+    return curr.symbol + ' ' + val.toFixed(decimals);
+  }, [activeCurrency, convertCurrency]);
+
   // Agrega todas as notificacoes ativas
   const allNotifications = useMemo(() => {
     const items = [];
@@ -1423,6 +1481,23 @@ function App() {
               >
                 ðŸšª Sair
               </button>
+              <div className="currency-selector-wrap">
+                <button
+                  className="currency-panel-btn"
+                  title="Painel de câmbio"
+                  onClick={() => setCurrencyPanelOpen(v => !v)}
+                >💱</button>
+                <select
+                  className="currency-select"
+                  value={activeCurrency}
+                  onChange={e => setActiveCurrency(e.target.value)}
+                  title="Selecionar moeda"
+                >
+                  {CURRENCIES.map(cur => (
+                    <option key={cur.code} value={cur.code}>{cur.flag} {cur.code}</option>
+                  ))}
+                </select>
+              </div>
               <div className="notif-bell-wrap">
                 <button
                   className="notif-bell-btn"
@@ -1524,6 +1599,7 @@ function App() {
               goals={goals}
               categories={categories}
               wallets={wallets}
+              fmtCurrency={fmtCurrency}
             />
           )}
           {activeTab === 'entradas' && (
@@ -1628,6 +1704,43 @@ function App() {
         </Suspense>
       </main>
 
+      {/* Painel de taxas e conversor rapido */}
+      {currencyPanelOpen && (
+        <div className="notif-overlay" onClick={() => setCurrencyPanelOpen(false)}>
+          <div className="notif-panel currency-panel" onClick={e => e.stopPropagation()}>
+            <div className="notif-panel-header">
+              <span>💱 Taxas de Câmbio (base: BRL)</span>
+              <button className="notif-close-btn" onClick={() => setCurrencyPanelOpen(false)}>✕</button>
+            </div>
+            {loadingRates ? (
+              <div className="notif-empty">⏳ Atualizando taxas...</div>
+            ) : (
+              <>
+                <div className="rates-grid">
+                  {CURRENCIES.filter(x => x.code !== 'BRL').map(cur => (
+                    <div key={cur.code} className={'rate-item' + (activeCurrency === cur.code ? ' rate-active' : '')} onClick={() => setActiveCurrency(cur.code)}>
+                      <span className="rate-flag">{cur.flag}</span>
+                      <span className="rate-code">{cur.code}</span>
+                      <span className="rate-val">{exchangeRates[cur.code] ? exchangeRates[cur.code].toFixed(4) : '—'}</span>
+                    </div>
+                  ))}
+                </div>
+                {ratesLastUpdate && <div className="rates-updated">🔄 Atualizado: {ratesLastUpdate}</div>}
+                <div className="currency-mini-converter">
+                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>🔁 Conversor Rápido</h4>
+                  <CurrencyConverter currencies={CURRENCIES} exchangeRates={exchangeRates} activeCurrency={activeCurrency} />
+                </div>
+              </>
+            )}
+            <div className="notif-panel-footer">
+              <button className="notif-email-btn" onClick={fetchExchangeRates} disabled={loadingRates}>
+                {loadingRates ? '⏳ Atualizando...' : '🔄 Atualizar Taxas'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Painel de Notificacoes */}
       {notifOpen && (
         <div className="notif-overlay" onClick={() => setNotifOpen(false)}>
@@ -1712,6 +1825,58 @@ function Spinner({ size = '20px', color = '#007bff' }) {
         borderTopColor: color
       }}
     />
+  );
+}
+
+function CurrencyConverter({ currencies, exchangeRates, activeCurrency }) {
+  const [fromCur, setFromCur] = React.useState('BRL');
+  const [toCur, setToCur] = React.useState(activeCurrency || 'USD');
+  const [amount, setAmount] = React.useState('100');
+
+  React.useEffect(() => { setToCur(activeCurrency || 'USD'); }, [activeCurrency]);
+
+  const result = React.useMemo(() => {
+    const val = parseFloat(amount);
+    if (!val || isNaN(val) || !exchangeRates) return null;
+    const rates = exchangeRates; // rates relative to BRL
+    let brlVal = fromCur === 'BRL' ? val : val / (rates[fromCur] || 1);
+    let out = toCur === 'BRL' ? brlVal : brlVal * (rates[toCur] || 1);
+    return out;
+  }, [amount, fromCur, toCur, exchangeRates]);
+
+  const cur = currencies || [];
+  const fmt = (v, code) => {
+    const c = cur.find(x => x.code === code);
+    if (!c) return v.toFixed(2);
+    const sym = c.symbol || code;
+    if (['JPY', 'CLP', 'PYG'].includes(code)) return sym + ' ' + Math.round(v).toLocaleString('pt-BR');
+    return sym + ' ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  return (
+    <div className="mini-converter">
+      <div className="mini-conv-row">
+        <input
+          className="mini-conv-input"
+          type="number"
+          value={amount}
+          min="0"
+          onChange={e => setAmount(e.target.value)}
+        />
+        <select className="mini-conv-select" value={fromCur} onChange={e => setFromCur(e.target.value)}>
+          {cur.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
+        </select>
+        <span className="mini-conv-arrow">→</span>
+        <select className="mini-conv-select" value={toCur} onChange={e => setToCur(e.target.value)}>
+          {cur.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
+        </select>
+      </div>
+      {result !== null && (
+        <div className="mini-conv-result">
+          = {fmt(result, toCur)}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2341,7 +2506,9 @@ const CategoryManagement = React.memo(({
 });
 
 // Dashboard com resumo financeiro otimizado
-const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [], categories, wallets = [] }) => {
+const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [], categories, wallets = [], fmtCurrency }) => {
+  // Fallback para BRL se fmtCurrency não disponível
+  const fmt = fmtCurrency || ((v) => 'R$ ' + v.toFixed(2));
   const now = new Date();
   const currentMonth = now.toISOString().slice(0, 7);
   const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -2579,9 +2746,9 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
                     }} />
                   </div>
                   <div className="dash-goal-amounts">
-                    <span>R$ {curr.toFixed(2)}</span>
-                    <span style={{ color: '#94a3b8' }}>/ R$ {target.toFixed(2)}</span>
-                    {!done && <span className="dash-goal-falta">Falta R$ {falta.toFixed(2)}</span>}
+                    <span>{fmt(curr)}</span>
+                    <span style={{ color: '#94a3b8' }}>/ {fmt(target)}</span>
+                    {!done && <span className="dash-goal-falta">Falta {fmt(falta)}</span>}
                   </div>
                   {g.deadline && (
                     <div className="dash-goal-deadline">
@@ -2629,7 +2796,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
               <div key={g.id} className="alert-item due-soon">
                 <div className="alert-info">
                   <span className="alert-description">{g.name}</span>
-                  <span className="alert-value">Falta R$ {falta.toFixed(2)}</span>
+                  <span className="alert-value">Falta {fmt(falta)}</span>
                 </div>
                 <div className="alert-date">
                   <span className="alert-status due-soon">ðŸŸ¡ Prazo em {diff} dia(s)</span>
@@ -2672,8 +2839,8 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
                     <div className="budget-bar" style={{ width: `${pct}%`, background: over ? '#e74c3c' : pct > 80 ? '#f39c12' : '#2ecc71' }} />
                   </div>
                   <div className="db-budget-amounts">
-                    <span className={over ? 'text-danger' : ''}>R$ {spent.toFixed(2)}</span>
-                    <span style={{ color: '#94a3b8' }}>/ R$ {limit.toFixed(2)}</span>
+                    <span className={over ? 'text-danger' : ''}>{fmt(spent)}</span>
+                    <span style={{ color: '#94a3b8' }}>/ {fmt(limit)}</span>
                   </div>
                 </div>
               );
@@ -2691,7 +2858,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
               <div key={w.id} className="dash-wallet-card">
                 <div className="dash-wallet-name">{w.name}</div>
                 <div className={`dash-wallet-balance ${parseFloat(w.balance) >= 0 ? 'positive' : 'negative'}`}>
-                  R$ {parseFloat(w.balance).toFixed(2)}
+                  {fmt(parseFloat(w.balance))}
                 </div>
                 {w.type && <div className="dash-wallet-type">{w.type}</div>}
               </div>
@@ -2718,7 +2885,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
               </div>
               <div className="transaction-amount">
                 <span className={`amount ${transaction.type}`}>
-                  {transaction.type === 'entrada' ? '+' : '-'}R$ {parseFloat(transaction.value).toFixed(2)}
+                  {transaction.type === 'entrada' ? '+' : '-'}{fmt(parseFloat(transaction.value))}
                 </span>
                 <span className="transaction-date">ðŸ“… {new Date(transaction.date).toLocaleDateString()}</span>
               </div>

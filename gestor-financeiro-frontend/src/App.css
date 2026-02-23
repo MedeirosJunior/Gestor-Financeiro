@@ -4813,3 +4813,211 @@ button.loading .spinner {
 .app.dark-mode .pie-val {
   color: var(--dm-text1);
 }
+/* ===== MULTI-MOEDA ===== */
+.currency-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.currency-panel-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 6px;
+  line-height: 1;
+  transition: background 0.2s;
+}
+.currency-panel-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.currency-select {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  outline: none;
+  transition: background 0.2s;
+}
+.currency-select:hover {
+  background: rgba(255,255,255,0.25);
+}
+.currency-select option {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* Currency rates panel (reutiliza .notif-panel layout) */
+.currency-rates-panel {
+  position: absolute;
+  right: 180px;
+  top: 60px;
+  width: 380px;
+  max-height: 520px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  z-index: 2000;
+  padding: 16px;
+  animation: slideDown 0.18s ease;
+}
+
+.currency-rates-panel h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #2d3748;
+}
+
+.rates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rate-item {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  text-align: center;
+}
+.rate-item:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+.rate-item.rate-active {
+  background: #6366f1;
+  color: #fff;
+}
+
+.rate-flag {
+  font-size: 1.3rem;
+  display: block;
+}
+.rate-code {
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: block;
+  margin-top: 2px;
+}
+.rate-val {
+  font-size: 0.72rem;
+  display: block;
+  opacity: 0.8;
+}
+.rate-item.rate-active .rate-val {
+  opacity: 1;
+}
+
+.rates-updated {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.currency-mini-converter {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+/* Mini converter */
+.mini-converter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mini-conv-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mini-conv-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+}
+.mini-conv-input:focus {
+  border-color: #6366f1;
+}
+
+.mini-conv-select {
+  padding: 5px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f8fafc;
+  cursor: pointer;
+  outline: none;
+}
+
+.mini-conv-arrow {
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.mini-conv-result {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #6366f1;
+  padding: 6px 10px;
+  background: #f0f0ff;
+  border-radius: 8px;
+}
+
+/* Dark mode */
+.app.dark-mode .currency-rates-panel {
+  background: var(--dm-card, #1e293b);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+.app.dark-mode .currency-rates-panel h3 {
+  color: var(--dm-text1, #f1f5f9);
+}
+.app.dark-mode .rate-item {
+  background: #334155;
+  color: #f1f5f9;
+}
+.app.dark-mode .rate-item:hover {
+  background: #475569;
+}
+.app.dark-mode .rate-item.rate-active {
+  background: #6366f1;
+  color: #fff;
+}
+.app.dark-mode .currency-mini-converter {
+  border-top-color: #334155;
+}
+.app.dark-mode .mini-conv-input,
+.app.dark-mode .mini-conv-select {
+  background: #334155;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+.app.dark-mode .mini-conv-result {
+  background: #312e81;
+  color: #a5b4fc;
+}
+.app.dark-mode .rates-updated {
+  color: #64748b;
+}
+
+/* currency-panel override sobre notif-panel */
+.notif-panel.currency-panel {
+  width: 400px;
+  max-width: 95vw;
+}

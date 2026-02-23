@@ -1292,6 +1292,40 @@ app.get('/transfers', async (req, res) => {
   }
 });
 
+// ============ EXCHANGE RATES ============
+// Cache de câmbio: atualiza a cada 6 horas
+let ratesCache = null;
+let ratesCacheTime = 0;
+const RATES_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+app.get('/exchange-rates', async (req, res) => {
+  const now = Date.now();
+  if (ratesCache && (now - ratesCacheTime < RATES_TTL_MS)) {
+    return res.json({ ...ratesCache, cached: true });
+  }
+  try {
+    // API pública gratuita sem chave — base: BRL
+    const fetch = (await import('node-fetch')).default;
+    const apiRes = await fetch('https://open.er-api.com/v6/latest/BRL');
+    if (!apiRes.ok) throw new Error('upstream error');
+    const data = await apiRes.json();
+    if (data.result !== 'success') throw new Error('API retornou erro');
+    ratesCache = { base: 'BRL', rates: data.rates, time_last_update: data.time_last_update_utc };
+    ratesCacheTime = now;
+    res.json(ratesCache);
+  } catch (err) {
+    // Fallback com taxas aproximadas (atualizadas manualmente)
+    console.warn('exchange-rates fallback:', err.message);
+    const fallback = {
+      base: 'BRL',
+      rates: { BRL: 1, USD: 0.175, EUR: 0.162, GBP: 0.138, ARS: 178, JPY: 26.5, CLP: 163, COP: 705, MXN: 3.05, PYG: 1268, UYU: 7.1 },
+      time_last_update: 'Fallback (offline)',
+      cached: false,
+    };
+    res.json(fallback);
+  }
+});
+
 // ============ SEND EMAIL SUMMARY ============
 app.post('/send-email-summary', authenticateToken, async (req, res) => {
   const { email, notifications } = req.body;
