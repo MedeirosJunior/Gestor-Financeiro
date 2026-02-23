@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import './App.css';
 import './mobile.css';
 import './professional.css';
@@ -2041,45 +2041,45 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
       <div className="login-box">
         <h1>ðŸ’° Gestor Financeiro</h1>
         {!forgotStep && (<>
-        <h2>ðŸ” Login</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>ðŸ‘¤ Email:</label>
-            <input
-              type="email"
-              value={credentials.email}
-              onChange={handleEmailChange}
-              placeholder="Digite seu email"
-              required
-            />
+          <h2>ðŸ” Login</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>ðŸ‘¤ Email:</label>
+              <input
+                type="email"
+                value={credentials.email}
+                onChange={handleEmailChange}
+                placeholder="Digite seu email"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>ðŸ”‘ Senha:</label>
+              <input
+                type="password"
+                value={credentials.password}
+                onChange={handlePasswordChange}
+                placeholder="Digite sua senha"
+                required
+              />
+            </div>
+            <ButtonSpinner
+              type="submit"
+              className="login-btn"
+              loading={loadingAuth}
+            >
+              Entrar
+            </ButtonSpinner>
+          </form>
+          <div className="forgot-link-wrap">
+            <button
+              type="button"
+              className="forgot-link"
+              onClick={() => { setForgotStep('email'); setForgotEmail(credentials.email || ''); }}
+            >
+              🔑 Esqueceu a senha?
+            </button>
           </div>
-          <div className="form-group">
-            <label>ðŸ”‘ Senha:</label>
-            <input
-              type="password"
-              value={credentials.password}
-              onChange={handlePasswordChange}
-              placeholder="Digite sua senha"
-              required
-            />
-          </div>
-          <ButtonSpinner
-            type="submit"
-            className="login-btn"
-            loading={loadingAuth}
-          >
-            Entrar
-          </ButtonSpinner>
-        </form>
-        <div className="forgot-link-wrap">
-          <button
-            type="button"
-            className="forgot-link"
-            onClick={() => { setForgotStep('email'); setForgotEmail(credentials.email || ''); }}
-          >
-            🔑 Esqueceu a senha?
-          </button>
-        </div>
         </>)}
 
         {forgotStep === 'email' && (
@@ -5017,10 +5017,10 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
     if (!raw) return '';
     const s = String(raw).trim();
     // DD/MM/YYYY ou DD-MM-YYYY
-    const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    const dmY = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dmY) return `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`;
     // YYYY-MM-DD ou YYYY/MM/DD
-    const Ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    const Ymd = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
     if (Ymd) return `${Ymd[1]}-${Ymd[2].padStart(2, '0')}-${Ymd[3].padStart(2, '0')}`;
     // MM/DD/YYYY
     const mdY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
