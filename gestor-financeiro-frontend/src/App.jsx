@@ -1630,6 +1630,7 @@ function App() {
               loadingExport={loadingExport}
               setLoadingExport={setLoadingExport}
               categories={categories}
+              fmtCurrency={fmtCurrency}
             />
           )}
           {activeTab === 'historico' && (
@@ -2633,7 +2634,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
       <div className="cards cards-4">
         <div className="card entradas">
           <div className="card-label">ðŸ’µ ENTRADAS</div>
-          <div className="card-value">R$ {totalEntradas.toFixed(2)}</div>
+          <div className="card-value">{fmt(totalEntradas)}</div>
           {prevEntradas > 0 || totalEntradas > 0 ? (
             <div className="card-trend" style={{ color: pctColor(totalEntradas, prevEntradas) }}>
               {pctChange(totalEntradas, prevEntradas)} vs mÃªs anterior
@@ -2642,7 +2643,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
         </div>
         <div className="card despesas">
           <div className="card-label">ðŸ’¸ DESPESAS</div>
-          <div className="card-value">R$ {totalDespesas.toFixed(2)}</div>
+          <div className="card-value">{fmt(totalDespesas)}</div>
           {prevDespesas > 0 || totalDespesas > 0 ? (
             <div className="card-trend" style={{ color: pctColor(totalDespesas, prevDespesas, true) }}>
               {pctChange(totalDespesas, prevDespesas)} vs mÃªs anterior
@@ -2651,7 +2652,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
         </div>
         <div className={`card saldo ${saldo >= 0 ? 'positive' : 'negative'}`}>
           <div className="card-label">ðŸ”¥ SALDO</div>
-          <div className="card-value">R$ {saldo.toFixed(2)}</div>
+          <div className="card-value">{fmt(saldo)}</div>
           <div className="card-trend" style={{ color: saldo >= 0 ? '#2ecc71' : '#e74c3c' }}>
             {saldo >= 0 ? 'âœ… Positivo' : 'âš ï¸ Negativo'}
           </div>
@@ -3943,7 +3944,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
 });
 
 // RelatÃ³rios mensais
-function Relatorios({ transactions, loadingExport, setLoadingExport, categories }) {
+function Relatorios({ transactions, loadingExport, setLoadingExport, categories, fmtCurrency }) {
   const allCatsFlat = useMemo(() =>
     [...(categories?.entrada || []), ...(categories?.despesa || [])],
     [categories]
@@ -3966,6 +3967,9 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
   const [reportMode, setReportMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+
+  const fmt = fmtCurrency || ((v) => 'R$ ' + v.toFixed(2));
+  const REPORT_COLORS = ['#6366f1', '#e74c3c', '#f59e0b', '#2ecc71', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4'];
 
   const monthlyData = transactions.filter(t =>
     t.date.startsWith(selectedMonth)
@@ -3998,6 +4002,11 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
     despesas: acc.despesas + row.despesas,
     saldo: acc.saldo + row.saldo
   }), { entradas: 0, despesas: 0, saldo: 0 });
+
+  const reportPieData = Object.entries(categoriesData)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, value]) => ({ name, value }));
 
   // FunÃ§Ã£o para exportar para Excel
   const exportToExcel = async () => {
@@ -4274,13 +4283,48 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
           <div className="report-summary">
             <div className="summary-card">
               <h3>Resumo do MÃªs</h3>
-              <p>ðŸ’µ Entradas: R$ {totalEntradas.toFixed(2)}</p>
-              <p>ðŸ’¸ Despesas: R$ {totalDespesas.toFixed(2)}</p>
+              <p>ðŸ’µ Entradas: {fmt(totalEntradas)}</p>
+              <p>ðŸ’¸ Despesas: {fmt(totalDespesas)}</p>
               <p className={totalEntradas - totalDespesas >= 0 ? 'positive' : 'negative'}>
-                ðŸ’° Saldo: R$ {(totalEntradas - totalDespesas).toFixed(2)}
+                ðŸ’° Saldo: {fmt(totalEntradas - totalDespesas)}
               </p>
             </div>
           </div>
+
+          {reportPieData.length > 0 && (
+            <div className="report-pie-section">
+              <h3>🥧 Distribuição de Despesas</h3>
+              <div className="report-pie-wrapper">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={reportPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {reportPieData.map((_, i) => (
+                        <Cell key={i} fill={REPORT_COLORS[i % REPORT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [fmt(value), undefined]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="report-pie-legend">
+                  {reportPieData.map((entry, i) => (
+                    <div key={i} className="report-pie-item">
+                      <span className="report-pie-dot" style={{ background: REPORT_COLORS[i % REPORT_COLORS.length] }} />
+                      <span className="report-pie-name">{entry.name}</span>
+                      <span className="report-pie-val">{fmt(entry.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="categories-report">
             <h3>ðŸ“Š Gastos por Categoria</h3>
@@ -4319,11 +4363,40 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
           <div className="report-summary">
             <div className="summary-card">
               <h3>Resumo Anual â€” {selectedYear}</h3>
-              <p>ðŸ’µ Entradas: R$ {annualTotals.entradas.toFixed(2)}</p>
-              <p>ðŸ’¸ Despesas: R$ {annualTotals.despesas.toFixed(2)}</p>
+              <p>ðŸ’µ Entradas: {fmt(annualTotals.entradas)}</p>
+              <p>ðŸ’¸ Despesas: {fmt(annualTotals.despesas)}</p>
               <p className={annualTotals.saldo >= 0 ? 'positive' : 'negative'}>
-                ðŸ’° Saldo: R$ {annualTotals.saldo.toFixed(2)}
+                ðŸ’° Saldo: {fmt(annualTotals.saldo)}
               </p>
+            </div>
+          </div>
+
+          <div className="report-annual-charts">
+            <div className="report-chart-card">
+              <h3>📊 Entradas vs Despesas por Mês</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value) => [fmt(value), undefined]} />
+                  <Legend />
+                  <Bar dataKey="entradas" name="Entradas" fill="#2ecc71" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill="#e74c3c" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="report-chart-card">
+              <h3>📈 Saldo Mensal</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : (v <= -1000 ? '-' + (Math.abs(v) / 1000).toFixed(0) + 'k' : v)} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value) => [fmt(value), undefined]} />
+                  <Line type="monotone" dataKey="saldo" name="Saldo" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366f1' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -4347,18 +4420,18 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories 
                 {annualData.map(row => (
                   <tr key={row.key}>
                     <td>{row.mes}</td>
-                    <td className="text-success">R$ {row.entradas.toFixed(2)}</td>
-                    <td className="text-danger">R$ {row.despesas.toFixed(2)}</td>
-                    <td className={row.saldo >= 0 ? 'text-success' : 'text-danger'}>R$ {row.saldo.toFixed(2)}</td>
+                    <td className="text-success">{fmt(row.entradas)}</td>
+                    <td className="text-danger">{fmt(row.despesas)}</td>
+                    <td className={row.saldo >= 0 ? 'text-success' : 'text-danger'}>{fmt(row.saldo)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr style={{ fontWeight: 700 }}>
                   <td>Total</td>
-                  <td className="text-success">R$ {annualTotals.entradas.toFixed(2)}</td>
-                  <td className="text-danger">R$ {annualTotals.despesas.toFixed(2)}</td>
-                  <td className={annualTotals.saldo >= 0 ? 'text-success' : 'text-danger'}>R$ {annualTotals.saldo.toFixed(2)}</td>
+                  <td className="text-success">{fmt(annualTotals.entradas)}</td>
+                  <td className="text-danger">{fmt(annualTotals.despesas)}</td>
+                  <td className={annualTotals.saldo >= 0 ? 'text-success' : 'text-danger'}>{fmt(annualTotals.saldo)}</td>
                 </tr>
               </tfoot>
             </table>
