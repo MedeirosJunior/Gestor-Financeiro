@@ -1292,6 +1292,91 @@ app.get('/transfers', async (req, res) => {
   }
 });
 
+// ============ SEND EMAIL SUMMARY ============
+app.post('/send-email-summary', authenticateToken, async (req, res) => {
+  const { email, notifications } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ message: 'E-mail inválido.' });
+  }
+  if (!Array.isArray(notifications) || notifications.length === 0) {
+    return res.status(400).json({ message: 'Nenhuma notificação para enviar.' });
+  }
+
+  // Monta HTML do resumo
+  const rows = notifications.map(n => `
+    <tr>
+      <td style="padding:8px 12px;font-size:14px;">${n.icon}</td>
+      <td style="padding:8px 12px;font-size:14px;font-weight:600;color:#1e293b;">${n.title}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#475569;">${n.body}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#94a3b8;">${n.date || ''}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Resumo de Notificações — Gestor Financeiro</title></head>
+<body style="font-family:sans-serif;background:#f8fafc;padding:24px;">
+  <div style="max-width:600px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;">
+    <div style="background:#6366f1;padding:20px 24px;">
+      <h1 style="color:#fff;margin:0;font-size:1.3rem;">💰 Gestor Financeiro</h1>
+      <p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Resumo de Notificações</p>
+    </div>
+    <div style="padding:20px 24px;">
+      <p style="color:#475569;font-size:0.9rem;margin-top:0;">
+        Você possui <strong>${notifications.length}</strong> notificação(ões) ativa(s):
+      </p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #f1f5f9;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="padding:8px 12px;text-align:left;font-size:12px;color:#94a3b8;width:32px;"></th>
+            <th style="padding:8px 12px;text-align:left;font-size:12px;color:#94a3b8;">Tipo</th>
+            <th style="padding:8px 12px;text-align:left;font-size:12px;color:#94a3b8;">Detalhe</th>
+            <th style="padding:8px 12px;text-align:left;font-size:12px;color:#94a3b8;">Data</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="margin-top:20px;font-size:0.8rem;color:#94a3b8;">
+        Enviado em ${new Date().toLocaleString('pt-BR')} · Gestor Financeiro
+      </p>
+    </div>
+  </div>
+</body></html>`;
+
+  // Verificar se nodemailer está disponível + SMTP configurado
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || smtpUser;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    // Modo demonstração: log no console e retorna sucesso com aviso
+    console.log(`📧 [EMAIL DEMO] Para: ${email} | ${notifications.length} notificações`);
+    console.log('   Configure SMTP_HOST, SMTP_USER, SMTP_PASS para envio real.');
+    return res.json({ ok: true, demo: true, message: 'E-mail simulado (SMTP não configurado no servidor). Configure as variáveis SMTP_HOST, SMTP_USER e SMTP_PASS no Render.' });
+  }
+
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({
+      from: `"Gestor Financeiro" <${smtpFrom}>`,
+      to: email,
+      subject: `🔔 Resumo de Notificações — Gestor Financeiro (${notifications.length})`,
+      html,
+    });
+    console.log(`📧 E-mail enviado para ${email}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro ao enviar e-mail:', err.message);
+    res.status(500).json({ message: 'Erro ao enviar e-mail: ' + err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`🚀 API do Gestor Financeiro rodando em http://localhost:${port}`);
   console.log(`📊 Backend iniciado com sucesso!`);
