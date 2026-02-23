@@ -4084,16 +4084,254 @@ button.loading .spinner {
   margin-bottom: 24px;
 }
 
+/* ─── Dashboard melhorado ──────────────────────────────── */
+
+/* 4 cards em linha */
+.cards-4 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .cards-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .cards-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Gráficos lado a lado */
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.empty-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #64748b;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Pie chart + legenda */
+.pie-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pie-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.pie-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pie-name {
+  flex: 1;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pie-val {
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Progresso das metas */
+.dashboard-goals {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.dashboard-goals h3 {
+  margin-bottom: 16px;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.dash-goal-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.dash-goal-card.completed {
+  border-color: #2ecc71;
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.dash-goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dash-goal-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+
+.dash-goal-pct {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+.dash-goal-bar-wrap {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.dash-goal-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.dash-goal-amounts {
+  display: flex;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #334155;
+  flex-wrap: wrap;
+}
+
+.dash-goal-falta {
+  color: #e74c3c;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.dash-goal-deadline {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Saldo das contas */
+.dashboard-wallets {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.dashboard-wallets h3 {
+  margin-bottom: 14px;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dash-wallets-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-wallet-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  min-width: 160px;
+}
+
+.dash-wallet-name {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.dash-wallet-balance {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.dash-wallet-balance.positive {
+  color: #2ecc71;
+}
+
+.dash-wallet-balance.negative {
+  color: #e74c3c;
+}
+
+.dash-wallet-type {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
 /* ═══════════════════════════════════════════════════════
    DARK MODE — .app.dark-mode
    ═══════════════════════════════════════════════════════ */
 .app.dark-mode {
-  --dm-bg1:   #0f172a;
-  --dm-bg2:   #1e293b;
-  --dm-bg3:   #334155;
+  --dm-bg1: #0f172a;
+  --dm-bg2: #1e293b;
+  --dm-bg3: #334155;
   --dm-text1: #f1f5f9;
   --dm-text2: #94a3b8;
-  --dm-border:#334155;
+  --dm-border: #334155;
 }
 
 /* Página / App */
@@ -4112,24 +4350,28 @@ button.loading .spinner {
 
 /* Botão modo escuro */
 .darkmode-btn {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   padding: 5px 10px;
   cursor: pointer;
   font-size: 1.1rem;
   transition: background 0.2s;
 }
-.darkmode-btn:hover { background: rgba(255,255,255,0.2); }
+
+.darkmode-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 
 /* Nav buttons */
 .app.dark-mode .nav button {
   color: var(--dm-text2);
   background: transparent;
 }
+
 .app.dark-mode .nav button:hover,
 .app.dark-mode .nav button.active {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--dm-text1);
 }
 
@@ -4139,24 +4381,41 @@ button.loading .spinner {
   border-color: var(--dm-border);
   color: var(--dm-text1);
 }
-.app.dark-mode .card h3 { color: var(--dm-text2); }
+
+.app.dark-mode .card h3 {
+  color: var(--dm-text2);
+}
+
 .app.dark-mode .card .value,
 .app.dark-mode .card-value,
-.app.dark-mode .card-label { color: var(--dm-text1); }
+.app.dark-mode .card-label {
+  color: var(--dm-text1);
+}
 
 /* Recent transactions (dashboard) */
 .app.dark-mode .recent-transactions {
   background: var(--dm-bg1);
   border: 1px solid var(--dm-border);
 }
-.app.dark-mode .recent-transactions h3 { color: var(--dm-text1); }
+
+.app.dark-mode .recent-transactions h3 {
+  color: var(--dm-text1);
+}
+
 .app.dark-mode .transaction-item {
   background: var(--dm-bg2);
   border-color: var(--dm-border);
 }
-.app.dark-mode .transaction-description { color: var(--dm-text1); }
+
+.app.dark-mode .transaction-description {
+  color: var(--dm-text1);
+}
+
 .app.dark-mode .transaction-category,
-.app.dark-mode .transaction-date { color: var(--dm-text2); }
+.app.dark-mode .transaction-date {
+  color: var(--dm-text2);
+}
+
 .app.dark-mode .no-transactions {
   background: var(--dm-bg2);
   border-color: var(--dm-border);
@@ -4169,8 +4428,11 @@ button.loading .spinner {
 .app.dark-mode h4 {
   color: var(--dm-text1);
 }
+
 .app.dark-mode p,
-.app.dark-mode .loading { color: var(--dm-text2); }
+.app.dark-mode .loading {
+  color: var(--dm-text2);
+}
 
 /* Formulários */
 .app.dark-mode input,
@@ -4180,16 +4442,24 @@ button.loading .spinner {
   color: var(--dm-text1);
   border-color: var(--dm-border);
 }
+
 .app.dark-mode input::placeholder,
-.app.dark-mode textarea::placeholder { color: var(--dm-text2); }
+.app.dark-mode textarea::placeholder {
+  color: var(--dm-text2);
+}
+
 .app.dark-mode input:focus,
 .app.dark-mode select:focus,
 .app.dark-mode textarea:focus {
   border-color: #6366f1;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
-.app.dark-mode .form-group label { color: var(--dm-text2); }
+
+.app.dark-mode .form-group label {
+  color: var(--dm-text2);
+}
+
 .app.dark-mode .form-container,
 .app.dark-mode .lancamento-form,
 .app.dark-mode .add-user-form,
@@ -4206,13 +4476,28 @@ button.loading .spinner {
   background: var(--dm-bg2);
   border-color: var(--dm-border);
 }
-.app.dark-mode .transaction-card h4 { color: var(--dm-text1); }
-.app.dark-mode .transaction-card p { color: var(--dm-text2); }
-.app.dark-mode .transaction-card .date { color: var(--dm-text2); }
-.app.dark-mode .historico-summary { color: var(--dm-text2); }
+
+.app.dark-mode .transaction-card h4 {
+  color: var(--dm-text1);
+}
+
+.app.dark-mode .transaction-card p {
+  color: var(--dm-text2);
+}
+
+.app.dark-mode .transaction-card .date {
+  color: var(--dm-text2);
+}
+
+.app.dark-mode .historico-summary {
+  color: var(--dm-text2);
+}
 
 /* Filtros */
-.app.dark-mode .filters { gap: 8px; }
+.app.dark-mode .filters {
+  gap: 8px;
+}
+
 .app.dark-mode .search-input {
   background: var(--dm-bg1);
   color: var(--dm-text1);
@@ -4227,15 +4512,21 @@ button.loading .spinner {
   background: var(--dm-bg2);
   border-color: var(--dm-border);
 }
-.app.dark-mode .chart-section h3 { color: var(--dm-text1); }
+
+.app.dark-mode .chart-section h3 {
+  color: var(--dm-text1);
+}
 
 /* Despesas recorrentes */
 .app.dark-mode .recurring-item {
   background: var(--dm-bg2);
   border-color: var(--dm-border);
 }
+
 .app.dark-mode .recurring-item .item-description,
-.app.dark-mode .recurring-item .item-category { color: var(--dm-text1); }
+.app.dark-mode .recurring-item .item-category {
+  color: var(--dm-text1);
+}
 
 /* Orçamentos */
 .app.dark-mode .dashboard-budget-item,
@@ -4263,28 +4554,101 @@ button.loading .spinner {
 }
 
 /* Painel admin */
-.app.dark-mode .users-table th { background: var(--dm-bg1); color: var(--dm-text2); }
-.app.dark-mode .users-table td { color: var(--dm-text1); border-color: var(--dm-border); }
-.app.dark-mode .users-table tr:hover td { background: var(--dm-bg3); }
+.app.dark-mode .users-table th {
+  background: var(--dm-bg1);
+  color: var(--dm-text2);
+}
+
+.app.dark-mode .users-table td {
+  color: var(--dm-text1);
+  border-color: var(--dm-border);
+}
+
+.app.dark-mode .users-table tr:hover td {
+  background: var(--dm-bg3);
+}
 
 /* Import CSV */
-.app.dark-mode .import-upload-area { background: var(--dm-bg2); border-color: var(--dm-border); }
+.app.dark-mode .import-upload-area {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
 .app.dark-mode .import-map,
 .app.dark-mode .import-preview,
-.app.dark-mode .import-done { background: var(--dm-bg2); }
+.app.dark-mode .import-done {
+  background: var(--dm-bg2);
+}
 
 /* Badges e chips */
-.app.dark-mode .status-indicator { color: var(--dm-text1); }
-.app.dark-mode .section-header { color: var(--dm-text1); }
+.app.dark-mode .status-indicator {
+  color: var(--dm-text1);
+}
+
+.app.dark-mode .section-header {
+  color: var(--dm-text1);
+}
 
 /* Recharts — eixos e texto */
 .app.dark-mode .recharts-text,
-.app.dark-mode .recharts-cartesian-axis-tick-value { fill: var(--dm-text2) !important; }
+.app.dark-mode .recharts-cartesian-axis-tick-value {
+  fill: var(--dm-text2) !important;
+}
+
 .app.dark-mode .recharts-cartesian-grid-horizontal line,
-.app.dark-mode .recharts-cartesian-grid-vertical line { stroke: var(--dm-border) !important; }
-.app.dark-mode .recharts-legend-item-text { color: var(--dm-text2) !important; }
+.app.dark-mode .recharts-cartesian-grid-vertical line {
+  stroke: var(--dm-border) !important;
+}
+
+.app.dark-mode .recharts-legend-item-text {
+  color: var(--dm-text2) !important;
+}
+
 .app.dark-mode .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: var(--dm-bg1) !important;
   border-color: var(--dm-border) !important;
   color: var(--dm-text1) !important;
+}
+
+/* Dark mode — novos elementos do dashboard */
+.app.dark-mode .dashboard-goals,
+.app.dark-mode .dashboard-wallets {
+  background: var(--dm-bg2);
+  border-color: var(--dm-border);
+}
+
+.app.dark-mode .dashboard-goals h3,
+.app.dark-mode .dashboard-wallets h3 {
+  color: var(--dm-text1);
+}
+
+.app.dark-mode .dash-goal-card,
+.app.dark-mode .dash-wallet-card {
+  background: var(--dm-bg1);
+  border-color: var(--dm-border);
+}
+
+.app.dark-mode .dash-goal-card.completed {
+  border-color: #2ecc71;
+}
+
+.app.dark-mode .dash-goal-name,
+.app.dark-mode .dash-wallet-name {
+  color: var(--dm-text2);
+}
+
+.app.dark-mode .dash-goal-amounts {
+  color: var(--dm-text1);
+}
+
+.app.dark-mode .dash-goal-bar-wrap {
+  background: var(--dm-bg3);
+}
+
+.app.dark-mode .pie-name {
+  color: var(--dm-text2);
+}
+
+.app.dark-mode .pie-val {
+  color: var(--dm-text1);
 }
