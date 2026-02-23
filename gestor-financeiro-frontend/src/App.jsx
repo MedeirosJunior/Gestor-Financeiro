@@ -20,8 +20,8 @@ const SuspenseLoader = ({ message = "Carregando..." }) => (
 );
 
 // ============ INTERCEPTOR GLOBAL DE FETCH ============
-// Adiciona JWT automaticamente em todas as requisiÃ§Ãµes para a API
-// e faz logout automÃ¡tico em caso de 401 (token expirado/invÃ¡lido)
+// Adiciona JWT automaticamente em todas as requisições para a API
+// e faz logout automático em caso de 401 (token expirado/inválido)
 (function setupFetchInterceptor() {
   const _origFetch = window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
@@ -40,7 +40,7 @@ const SuspenseLoader = ({ message = "Carregando..." }) => (
       }
     }
     const response = await _origFetch(input, init);
-    // Logout automÃ¡tico se token expirar ou for invÃ¡lido (exceto no prÃ³prio login)
+    // Logout automático se token expirar ou for inválido (exceto no próprio login)
     if (response.status === 401 && typeof url === 'string' && !url.includes('/auth/login')) {
       ['isAuthenticated', 'currentUser', 'authToken', 'authTimestamp'].forEach(k => localStorage.removeItem(k));
       window.location.reload();
@@ -66,15 +66,15 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// FunÃ§Ãµes de ValidaÃ§Ã£o
+// Funções de Validação
 const ValidationUtils = {
-  // Validar se Ã© um nÃºmero vÃ¡lido e positivo
+  // Validar se é um número válido e positivo
   isValidPositiveNumber: (value) => {
     const num = parseFloat(value);
     return !isNaN(num) && num > 0 && isFinite(num);
   },
 
-  // Validar se string nÃ£o estÃ¡ vazia
+  // Validar se string não está vazia
   isNotEmpty: (value) => {
     return typeof value === 'string' && value.trim().length > 0;
   },
@@ -86,7 +86,7 @@ const ValidationUtils = {
     return date instanceof Date && !isNaN(date) && dateString.length === 10;
   },
 
-  // Validar se data nÃ£o Ã© futura demais (mÃ¡ximo 1 ano no futuro)
+  // Validar se data não é futura demais (máximo 1 ano no futuro)
   isReasonableDate: (dateString) => {
     if (!ValidationUtils.isValidDate(dateString)) return false;
     const date = new Date(dateString);
@@ -95,13 +95,13 @@ const ValidationUtils = {
     return date <= oneYearFromNow;
   },
 
-  // Validar valor monetÃ¡rio (mÃ¡ximo 1 milhÃ£o)
+  // Validar valor monetário (máximo 1 milhão)
   isReasonableAmount: (value) => {
     const num = parseFloat(value);
     return ValidationUtils.isValidPositiveNumber(value) && num <= 1000000;
   },
 
-  // Validar descriÃ§Ã£o (mÃ¡ximo 100 caracteres)
+  // Validar descrição (máximo 100 caracteres)
   isValidDescription: (description) => {
     return ValidationUtils.isNotEmpty(description) && description.trim().length <= 100;
   },
@@ -126,39 +126,39 @@ const ValidationUtils = {
   }
 };
 
-// FunÃ§Ã£o para tratamento de erros
+// Função para tratamento de erros
 const ErrorHandler = {
   // Tratar erros de API
-  handleApiError: (error, operation = 'operaÃ§Ã£o') => {
+  handleApiError: (error, operation = 'operação') => {
     console.error(`Erro na ${operation}:`, error);
 
     if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-      toast.error('Erro de conexÃ£o com servidor. Verifique sua internet e tente novamente.');
+      toast.error('Erro de conexão com servidor. Verifique sua internet e tente novamente.');
       return;
     }
 
     if (error.status) {
       switch (error.status) {
         case 400:
-          toast.error('Dados invÃ¡lidos. Verifique as informaÃ§Ãµes e tente novamente.');
+          toast.error('Dados inválidos. Verifique as informações e tente novamente.');
           break;
         case 401:
-          toast.error('NÃ£o autorizado. FaÃ§a login novamente.');
+          toast.error('Não autorizado. Faça login novamente.');
           break;
         case 403:
-          toast.error('Acesso negado. VocÃª nÃ£o tem permissÃ£o para esta aÃ§Ã£o.');
+          toast.error('Acesso negado. Você não tem permissão para esta ação.');
           break;
         case 404:
-          toast.error('Servidor nÃ£o encontrado. Verifique a conexÃ£o com a internet.');
+          toast.error('Servidor não encontrado. Verifique a conexão com a internet.');
           break;
         case 500:
           toast.error('Erro interno do servidor. Tente novamente mais tarde.');
           break;
         default:
-          toast.error(`Erro ${error.status}: ${operation} falhou. ConexÃ£o com servidor necessÃ¡ria.`);
+          toast.error(`Erro ${error.status}: ${operation} falhou. Conexão com servidor necessária.`);
       }
     } else {
-      toast.error(`Erro inesperado durante ${operation}. ConexÃ£o com servidor necessÃ¡ria.`);
+      toast.error(`Erro inesperado durante ${operation}. Conexão com servidor necessária.`);
     }
   },
 
@@ -167,19 +167,19 @@ const ErrorHandler = {
     console.error(`Erro de armazenamento ao ${operation}:`, error);
 
     if (error.name === 'QuotaExceededError') {
-      toast.error('EspaÃ§o de armazenamento esgotado. Limpe alguns dados antigos.');
+      toast.error('Espaço de armazenamento esgotado. Limpe alguns dados antigos.');
     } else {
-      toast.error(`Erro ao ${operation}. Tente recarregar a pÃ¡gina.`);
+      toast.error(`Erro ao ${operation}. Tente recarregar a página.`);
     }
   }
 };
 
-// UtilitÃ¡rios para conectividade
+// Utilitários para conectividade
 const ConnectivityUtils = {
-  // Verificar se a API estÃ¡ disponÃ­vel
+  // Verificar se a API está disponível
   checkApiHealth: async () => {
     try {
-      console.log('Testando conexÃ£o com API...');
+      console.log('Testando conexão com API...');
       const response = await fetch(`${config.API_URL}/api/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -187,15 +187,15 @@ const ConnectivityUtils = {
       });
 
       const isAvailable = response.ok;
-      console.log('Resultado do teste de API:', isAvailable ? 'DISPONÃVEL' : 'INDISPONÃVEL');
+      console.log('Resultado do teste de API:', isAvailable ? 'DISPONÍVEL' : 'INDISPONÍVEL');
       return isAvailable;
     } catch (error) {
-      console.error('API nÃ£o disponÃ­vel:', error.message);
+      console.error('API não disponível:', error.message);
       return false;
     }
   },
 
-  // Verificar conectividade bÃ¡sica
+  // Verificar conectividade básica
   isOnline: () => {
     return navigator.onLine;
   }
@@ -203,33 +203,33 @@ const ConnectivityUtils = {
 
 // Sistema de Categorias Personalizadas
 const CategoryManager = {
-  // Categorias padrÃ£o do sistema
+  // Categorias padrão do sistema
   defaultCategories: {
     entrada: [
-      { id: 'sal', name: 'SalÃ¡rio', icon: 'ðŸ’¼', color: '#10b981' },
-      { id: 'free', name: 'Freelance', icon: 'ðŸ’»', color: '#3b82f6' },
-      { id: 'inv', name: 'Investimentos', icon: 'ðŸ“ˆ', color: '#8b5cf6' },
-      { id: 'out-ent', name: 'Outros', icon: 'ðŸ’°', color: '#6b7280' }
+      { id: 'sal', name: 'Salário', icon: '💼', color: '#10b981' },
+      { id: 'free', name: 'Freelance', icon: '💻', color: '#3b82f6' },
+      { id: 'inv', name: 'Investimentos', icon: '📈', color: '#8b5cf6' },
+      { id: 'out-ent', name: 'Outros', icon: '💰', color: '#6b7280' }
     ],
     despesa: [
-      { id: 'alim', name: 'AlimentaÃ§Ã£o', icon: 'ðŸ½ï¸', color: '#ef4444' },
-      { id: 'trans', name: 'Transporte', icon: 'ðŸš—', color: '#f59e0b' },
-      { id: 'mor', name: 'Moradia', icon: 'ðŸ ', color: '#06b6d4' },
-      { id: 'sau', name: 'SaÃºde', icon: 'âš•ï¸', color: '#84cc16' },
-      { id: 'laz', name: 'Lazer', icon: 'ðŸŽ®', color: '#ec4899' },
-      { id: 'out-desp', name: 'Outros', icon: 'ðŸ’¸', color: '#6b7280' }
+      { id: 'alim', name: 'Alimentação', icon: '🍽️', color: '#ef4444' },
+      { id: 'trans', name: 'Transporte', icon: '🚗', color: '#f59e0b' },
+      { id: 'mor', name: 'Moradia', icon: '🏠', color: '#06b6d4' },
+      { id: 'sau', name: 'Saúde', icon: '⚕️', color: '#84cc16' },
+      { id: 'laz', name: 'Lazer', icon: '🎮', color: '#ec4899' },
+      { id: 'out-desp', name: 'Outros', icon: '💸', color: '#6b7280' }
     ]
   },
 
-  // Ãcones disponÃ­veis para seleÃ§Ã£o
+  // Ícones disponíveis para seleção
   availableIcons: [
-    'ðŸ’¼', 'ðŸ’»', 'ðŸ“ˆ', 'ðŸ’°', 'ðŸ†', 'ðŸŽ¯', 'ðŸ’Ž', 'ðŸ”¥',
-    'ðŸ½ï¸', 'ðŸš—', 'ðŸ ', 'âš•ï¸', 'ðŸŽ®', 'ðŸ’¸', 'ðŸ“š', 'ðŸ‘•',
-    'ðŸŽ¬', 'âœˆï¸', 'ðŸ‹ï¸', 'ðŸŽ¨', 'ðŸ”§', 'ðŸ“±', 'ðŸ’Š', 'ðŸŽª',
-    'ðŸ›’', 'â›½', 'ðŸ’¡', 'ðŸ§¾', 'ðŸŽµ', 'ðŸ“º', 'ðŸŽˆ', 'ðŸŒŸ'
+    '💼', '💻', '📈', '💰', '🏆', '🎯', '💎', '🔥',
+    '🍽️', '🚗', '🏠', '⚕️', '🎮', '💸', '📚', '👕',
+    '🎬', '✈️', '🏋️', '🎨', '🔧', '📱', '💊', '🎪',
+    '🛒', '⛽', '💡', '🧾', '🎵', '📺', '🎈', '🌟'
   ],
 
-  // Cores disponÃ­veis para seleÃ§Ã£o
+  // Cores disponíveis para seleção
   availableColors: [
     '#ef4444', '#f59e0b', '#84cc16', '#10b981', '#06b6d4',
     '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#6b7280'
@@ -278,25 +278,25 @@ const CategoryManager = {
   // Validar dados da categoria
   validateCategory: (category) => {
     if (!ValidationUtils.isNotEmpty(category.name)) {
-      return { valid: false, error: 'Nome da categoria Ã© obrigatÃ³rio' };
+      return { valid: false, error: 'Nome da categoria é obrigatório' };
     }
 
     if (category.name.length > 30) {
-      return { valid: false, error: 'Nome deve ter no mÃ¡ximo 30 caracteres' };
+      return { valid: false, error: 'Nome deve ter no máximo 30 caracteres' };
     }
 
     if (!category.icon || !CategoryManager.availableIcons.includes(category.icon)) {
-      return { valid: false, error: 'Ãcone invÃ¡lido selecionado' };
+      return { valid: false, error: 'Ícone inválido selecionado' };
     }
 
     if (!category.color || !CategoryManager.availableColors.includes(category.color)) {
-      return { valid: false, error: 'Cor invÃ¡lida selecionada' };
+      return { valid: false, error: 'Cor inválida selecionada' };
     }
 
     return { valid: true };
   },
 
-  // Verificar se categoria jÃ¡ existe
+  // Verificar se categoria já existe
   categoryExists: (name, type, excludeId = null) => {
     const categories = CategoryManager.loadCategories();
     return categories[type].some(cat =>
@@ -304,13 +304,13 @@ const CategoryManager = {
     );
   },
 
-  // Gerar ID Ãºnico para nova categoria
+  // Gerar ID único para nova categoria
   generateId: () => {
     return 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 };
 
-// AvanÃ§a uma data de vencimento pelo perÃ­odo de recorrÃªncia
+// Avança uma data de vencimento pelo período de recorrência
 const calcNextDue = (currentDueStr, frequency) => {
   const [y, m, d] = currentDueStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
@@ -321,7 +321,7 @@ const calcNextDue = (currentDueStr, frequency) => {
     case 'semiannual': date.setMonth(date.getMonth() + 6); break;
     case 'annual': date.setFullYear(date.getFullYear() + 1); break;
     case 'fifth-business-day': {
-      const nm = new Date(y, m, 1); // primeiro dia do prÃ³ximo mÃªs
+      const nm = new Date(y, m, 1); // primeiro dia do próximo mês
       let count = 0, td = 1;
       while (count < 5) {
         const t = new Date(nm.getFullYear(), nm.getMonth(), td);
@@ -336,22 +336,22 @@ const calcNextDue = (currentDueStr, frequency) => {
 };
 
 const RECURRING_CAT_MAP = {
-  'AlimentaÃ§Ã£o': 'alim', 'Transporte': 'trans', 'Moradia': 'mor',
-  'SaÃºde': 'sau', 'Lazer': 'laz', 'Outros': 'out-desp'
+  'Alimentação': 'alim', 'Transporte': 'trans', 'Moradia': 'mor',
+  'Saúde': 'sau', 'Lazer': 'laz', 'Outros': 'out-desp'
 };
 
 // Lista de moedas suportadas
 const CURRENCIES = [
-  { code: 'BRL', symbol: 'R$', flag: '🇧🇷', name: 'Real Brasileiro' },
-  { code: 'USD', symbol: '$', flag: '🇺🇸', name: 'Dolar Americano' },
-  { code: 'EUR', symbol: '€', flag: '🇪🇺', name: 'Euro' },
-  { code: 'GBP', symbol: '£', flag: '🇬🇧', name: 'Libra Esterlina' },
-  { code: 'ARS', symbol: '$', flag: '🇦🇷', name: 'Peso Argentino' },
-  { code: 'JPY', symbol: '¥', flag: '🇯🇵', name: 'Iene Japones' },
-  { code: 'CLP', symbol: '$', flag: '🇨🇱', name: 'Peso Chileno' },
-  { code: 'MXN', symbol: '$', flag: '🇲🇽', name: 'Peso Mexicano' },
-  { code: 'PYG', symbol: 'Gs', flag: '🇵🇾', name: 'Guarani Paraguaio' },
-  { code: 'UYU', symbol: '$', flag: '🇺🇾', name: 'Peso Uruguaio' },
+  { code: 'BRL', symbol: 'R$', flag: '����', name: 'Real Brasileiro' },
+  { code: 'USD', symbol: '$', flag: '����', name: 'Dolar Americano' },
+  { code: 'EUR', symbol: '�', flag: '����', name: 'Euro' },
+  { code: 'GBP', symbol: '�', flag: '����', name: 'Libra Esterlina' },
+  { code: 'ARS', symbol: '$', flag: '����', name: 'Peso Argentino' },
+  { code: 'JPY', symbol: '�', flag: '����', name: 'Iene Japones' },
+  { code: 'CLP', symbol: '$', flag: '����', name: 'Peso Chileno' },
+  { code: 'MXN', symbol: '$', flag: '����', name: 'Peso Mexicano' },
+  { code: 'PYG', symbol: 'Gs', flag: '����', name: 'Guarani Paraguaio' },
+  { code: 'UYU', symbol: '$', flag: '����', name: 'Peso Uruguaio' },
 ];
 
 function App() {
@@ -369,7 +369,7 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [goals, setGoals] = useState([]);
-  // Estado para modo escuro â€” inicializa do localStorage
+  // Estado para modo escuro — inicializa do localStorage
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   useEffect(() => {
@@ -401,7 +401,7 @@ function App() {
   const [categories, setCategories] = useState(CategoryManager.defaultCategories);
   const [customCategories, setCustomCategories] = useState({ entrada: [], despesa: [] });
 
-  // Verificar autenticaÃ§Ã£o no localStorage
+  // Verificar autenticação no localStorage
   useEffect(() => {
     const authStatus = localStorage.getItem('isAuthenticated');
     const userData = localStorage.getItem('currentUser');
@@ -412,7 +412,7 @@ function App() {
       ['isAuthenticated', 'currentUser', 'authToken', 'authTimestamp'].forEach(k => localStorage.removeItem(k));
     };
 
-    // Requer token JWT armazenado E timestamps vÃ¡lidos (7 dias)
+    // Requer token JWT armazenado E timestamps válidos (7 dias)
     if (authStatus === 'true' && userData && authToken && authTimestamp) {
       const now = new Date().getTime();
       const authTime = parseInt(authTimestamp);
@@ -424,17 +424,17 @@ function App() {
           setIsAuthenticated(true);
           setCurrentUser(user);
         } catch (error) {
-          console.error('Erro ao restaurar sessÃ£o:', error);
+          console.error('Erro ao restaurar sessão:', error);
           clearAuth();
         }
       } else {
         clearAuth();
-        toast.info('SessÃ£o expirada. FaÃ§a login novamente.');
+        toast.info('Sessão expirada. Faça login novamente.');
       }
     }
   }, []);
 
-  // Verificar disponibilidade da API na inicializaÃ§Ã£o
+  // Verificar disponibilidade da API na inicialização
   useEffect(() => {
     const checkApi = async () => {
       console.log('=== VERIFICANDO DISPONIBILIDADE DA API ===');
@@ -442,17 +442,17 @@ function App() {
 
       try {
         const available = await ConnectivityUtils.checkApiHealth();
-        console.log('Resultado final da verificaÃ§Ã£o:', available);
+        console.log('Resultado final da verificação:', available);
 
         setIsApiAvailable(available);
         setApiChecked(true);
 
         if (available) {
-          console.log('âœ… API disponÃ­vel - sistema operacional');
+          console.log('✅ API disponível - sistema operacional');
           toast.success('Conectado ao servidor!', { autoClose: 2000 });
         } else {
-          console.log('âŒ API indisponÃ­vel - sistema bloqueado');
-          toast.error('Servidor indisponÃ­vel. Verifique sua conexÃ£o.', { autoClose: 5000 });
+          console.log('❌ API indisponível - sistema bloqueado');
+          toast.error('Servidor indisponível. Verifique sua conexão.', { autoClose: 5000 });
         }
       } catch (error) {
         console.error('Erro ao verificar API:', error);
@@ -483,7 +483,7 @@ function App() {
     setCustomCategories(customCats);
   }, []);
 
-  // FunÃ§Ãµes para categorias personalizadas
+  // Funções para categorias personalizadas
   const addCustomCategory = useCallback((type, categoryData) => {
     const validation = CategoryManager.validateCategory(categoryData);
     if (!validation.valid) {
@@ -492,7 +492,7 @@ function App() {
     }
 
     if (CategoryManager.categoryExists(categoryData.name, type)) {
-      toast.error('JÃ¡ existe uma categoria com este nome!');
+      toast.error('Já existe uma categoria com este nome!');
       return false;
     }
 
@@ -528,7 +528,7 @@ function App() {
     }
 
     if (CategoryManager.categoryExists(categoryData.name, type, categoryId)) {
-      toast.error('JÃ¡ existe uma categoria com este nome!');
+      toast.error('Já existe uma categoria com este nome!');
       return false;
     }
 
@@ -559,7 +559,7 @@ function App() {
       setCustomCategories(updatedCustomCategories);
       const updatedCategories = CategoryManager.loadCategories();
       setCategories(updatedCategories);
-      toast.success('Categoria excluÃ­da com sucesso!');
+      toast.success('Categoria excluída com sucesso!');
       return true;
     }
     return false;
@@ -568,22 +568,22 @@ function App() {
   // All hooks must be called before any conditional returns
   const fetchTransactions = useCallback(async () => {
     try {
-      console.log('ðŸ“¡ Fazendo requisiÃ§Ã£o para:', `${config.API_URL}/transactions?userId=${encodeURIComponent(currentUser.email)}`);
+      console.log('📡 Fazendo requisição para:', `${config.API_URL}/transactions?userId=${encodeURIComponent(currentUser.email)}`);
       const response = await fetch(`${config.API_URL}/transactions?userId=${encodeURIComponent(currentUser.email)}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log('ðŸ“¥ Dados recebidos:', data);
+      console.log('📥 Dados recebidos:', data);
       if (!Array.isArray(data)) {
-        throw new Error('Formato de dados invÃ¡lido recebido do servidor');
+        throw new Error('Formato de dados inválido recebido do servidor');
       }
       setTransactions(data);
-      console.log('âœ… TransaÃ§Ãµes carregadas com sucesso:', data.length, 'itens');
+      console.log('✅ Transações carregadas com sucesso:', data.length, 'itens');
     } catch (error) {
-      console.error('âŒ Erro ao buscar transaÃ§Ãµes da API:', error);
+      console.error('❌ Erro ao buscar transações da API:', error);
       setIsApiAvailable(false);
-      ErrorHandler.handleApiError(error, 'buscar transaÃ§Ãµes');
+      ErrorHandler.handleApiError(error, 'buscar transações');
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -592,41 +592,41 @@ function App() {
 
   const addTransaction = useCallback(async (transaction) => {
     if (!ValidationUtils.isValidDescription(transaction.description)) {
-      toast.error('DescriÃ§Ã£o deve ter entre 1 e 100 caracteres!');
+      toast.error('Descrição deve ter entre 1 e 100 caracteres!');
       return;
     }
 
     if (!ValidationUtils.isReasonableAmount(transaction.value)) {
-      toast.error('Valor deve ser um nÃºmero positivo atÃ© R$ 1.000.000!');
+      toast.error('Valor deve ser um número positivo até R$ 1.000.000!');
       return;
     }
 
     if (!ValidationUtils.isValidDate(transaction.date)) {
-      toast.error('Data invÃ¡lida!');
+      toast.error('Data inválida!');
       return;
     }
 
     if (!ValidationUtils.isReasonableDate(transaction.date)) {
-      toast.error('Data nÃ£o pode ser mais de 1 ano no futuro!');
+      toast.error('Data não pode ser mais de 1 ano no futuro!');
       return;
     }
 
     const validCategoryIds = categories[transaction.type]?.map(cat => cat.id) || [];
 
     if (!validCategoryIds.includes(transaction.category)) {
-      toast.error('Categoria invÃ¡lida!');
+      toast.error('Categoria inválida!');
       return;
     }
 
     setLoadingTransactions(true);
     try {
       if (!isApiAvailable) {
-        toast.error('ConexÃ£o com servidor necessÃ¡ria para adicionar transaÃ§Ãµes. Verifique sua internet.');
+        toast.error('Conexão com servidor necessária para adicionar transações. Verifique sua internet.');
         return;
       }
 
       if (!currentUser?.email) {
-        toast.error('UsuÃ¡rio nÃ£o autenticado. FaÃ§a login novamente.');
+        toast.error('Usuário não autenticado. Faça login novamente.');
         return;
       }
 
@@ -668,24 +668,24 @@ function App() {
       await fetchTransactions();
       toast.success(`${transaction.type === 'entrada' ? 'Receita' : 'Despesa'} adicionada com sucesso!`);
     } catch (error) {
-      console.error('Erro ao adicionar transaÃ§Ã£o via API:', error);
+      console.error('Erro ao adicionar transação via API:', error);
       setIsApiAvailable(false);
-      ErrorHandler.handleApiError(error, 'adicionar transaÃ§Ã£o');
+      ErrorHandler.handleApiError(error, 'adicionar transação');
     } finally {
       setLoadingTransactions(false);
     }
   }, [fetchTransactions, wallets, categories, isApiAvailable, currentUser]);
 
-  // LanÃ§ar mÃºltiplas parcelas de uma vez
+  // Lançar múltiplas parcelas de uma vez
   const addTransactionBatch = useCallback(async (batchData) => {
     const { transactions: batch, wallet_id, totalValue, type } = batchData;
     if (!batch || batch.length === 0) return;
     if (!isApiAvailable) {
-      toast.error('ConexÃ£o com servidor necessÃ¡ria para adicionar parcelamentos.');
+      toast.error('Conexão com servidor necessária para adicionar parcelamentos.');
       return;
     }
     if (!currentUser?.email) {
-      toast.error('UsuÃ¡rio nÃ£o autenticado.');
+      toast.error('Usuário não autenticado.');
       return;
     }
     setLoadingTransactions(true);
@@ -715,7 +715,7 @@ function App() {
         }
       }
       await fetchTransactions();
-      toast.success(`ðŸ’³ ${batch.length} parcela(s) lanÃ§ada(s) com sucesso!`);
+      toast.success(`💳 ${batch.length} parcela(s) lançada(s) com sucesso!`);
     } catch (error) {
       console.error('Erro ao criar parcelamento:', error);
       ErrorHandler.handleApiError(error, 'criar parcelamento');
@@ -726,17 +726,17 @@ function App() {
 
   const deleteTransaction = useCallback(async (id) => {
     if (!ValidationUtils.isValidPositiveNumber(id)) {
-      toast.error('ID de transaÃ§Ã£o invÃ¡lido!');
+      toast.error('ID de transação inválido!');
       return;
     }
 
     if (!isApiAvailable) {
-      toast.error('ConexÃ£o com servidor necessÃ¡ria para excluir transaÃ§Ãµes. Verifique sua internet.');
+      toast.error('Conexão com servidor necessária para excluir transações. Verifique sua internet.');
       return;
     }
 
     if (!currentUser?.email) {
-      toast.error('UsuÃ¡rio nÃ£o autenticado. FaÃ§a login novamente.');
+      toast.error('Usuário não autenticado. Faça login novamente.');
       return;
     }
 
@@ -748,10 +748,10 @@ function App() {
 
       if (!response.ok) {
         if (response.status === 403) {
-          toast.error('VocÃª nÃ£o tem permissÃ£o para excluir esta transaÃ§Ã£o.');
+          toast.error('Você não tem permissão para excluir esta transação.');
           return;
         } else if (response.status === 404) {
-          toast.error('TransaÃ§Ã£o nÃ£o encontrada. Ela pode jÃ¡ ter sido excluÃ­da.');
+          toast.error('Transação não encontrada. Ela pode já ter sido excluída.');
           fetchTransactions();
           return;
         }
@@ -778,11 +778,11 @@ function App() {
         }
       }
 
-      toast.success('TransaÃ§Ã£o excluÃ­da com sucesso!');
+      toast.success('Transação excluída com sucesso!');
     } catch (error) {
-      console.error('âŒ Erro ao excluir transaÃ§Ã£o via API:', error);
+      console.error('❌ Erro ao excluir transação via API:', error);
       setIsApiAvailable(false);
-      ErrorHandler.handleApiError(error, 'excluir transaÃ§Ã£o');
+      ErrorHandler.handleApiError(error, 'excluir transação');
     } finally {
       setLoadingTransactions(false);
     }
@@ -790,7 +790,7 @@ function App() {
 
   const updateTransaction = useCallback(async (id, transaction, oldTransaction) => {
     if (!isApiAvailable) {
-      toast.error('ConexÃ£o com servidor necessÃ¡ria para editar transaÃ§Ãµes.');
+      toast.error('Conexão com servidor necessária para editar transações.');
       return;
     }
     setLoadingTransactions(true);
@@ -802,7 +802,7 @@ function App() {
       });
       const data = await response.json();
       if (response.ok) {
-        // Reverter saldo da conta antiga e aplicar novo saldo, se necessÃ¡rio
+        // Reverter saldo da conta antiga e aplicar novo saldo, se necessário
         const oldWalletId = oldTransaction?.wallet_id ? parseInt(oldTransaction.wallet_id) : null;
         const newWalletId = transaction.wallet_id ? parseInt(transaction.wallet_id) : null;
         const oldValue = oldTransaction ? parseFloat(oldTransaction.value) : 0;
@@ -844,15 +844,15 @@ function App() {
         }
 
         await fetchTransactions();
-        toast.success('TransaÃ§Ã£o atualizada com sucesso!');
+        toast.success('Transação atualizada com sucesso!');
         return true;
       } else {
-        toast.error(data.error || 'Erro ao atualizar transaÃ§Ã£o');
+        toast.error(data.error || 'Erro ao atualizar transação');
         return false;
       }
     } catch (error) {
-      console.error('Erro ao atualizar transaÃ§Ã£o:', error);
-      toast.error('Erro de conexÃ£o ao atualizar transaÃ§Ã£o');
+      console.error('Erro ao atualizar transação:', error);
+      toast.error('Erro de conexão ao atualizar transação');
       return false;
     } finally {
       setLoadingTransactions(false);
@@ -861,7 +861,7 @@ function App() {
 
   const handleLogin = useCallback((user, token) => {
     if (!user || !ValidationUtils.isValidCredentials(user.name, user.email)) {
-      toast.error('Dados de usuÃ¡rio invÃ¡lidos!');
+      toast.error('Dados de usuário inválidos!');
       return;
     }
 
@@ -931,34 +931,34 @@ function App() {
     }
   }, [isAuthenticated, fetchRecurringExpenses]);
 
-  // FunÃ§Ãµes para despesas recorrentes
+  // Funções para despesas recorrentes
   const addRecurringExpense = async (expense) => {
     if (!ValidationUtils.isValidDescription(expense.description)) {
-      toast.error('DescriÃ§Ã£o deve ter entre 1 e 100 caracteres!');
+      toast.error('Descrição deve ter entre 1 e 100 caracteres!');
       return;
     }
     if (!ValidationUtils.isReasonableAmount(expense.value)) {
-      toast.error('Valor deve ser um nÃºmero positivo atÃ© R$ 1.000.000!');
+      toast.error('Valor deve ser um número positivo até R$ 1.000.000!');
       return;
     }
     if (!ValidationUtils.isValidDate(expense.startDate)) {
-      toast.error('Data de inÃ­cio invÃ¡lida!');
+      toast.error('Data de início inválida!');
       return;
     }
     const validRecurrences = ['monthly', 'bimonthly', 'quarterly', 'semiannual', 'annual', 'fifth-business-day'];
     if (!expense.recurrence || !validRecurrences.includes(expense.recurrence)) {
-      toast.error('RecorrÃªncia invÃ¡lida! Selecione uma opÃ§Ã£o vÃ¡lida.');
+      toast.error('Recorrência inválida! Selecione uma opção válida.');
       return;
     }
-    const validCategories = ['AlimentaÃ§Ã£o', 'Transporte', 'Moradia', 'SaÃºde', 'Lazer', 'Outros'];
+    const validCategories = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'];
     if (!ValidationUtils.isValidCategory(expense.category, validCategories)) {
-      toast.error('Categoria invÃ¡lida!');
+      toast.error('Categoria inválida!');
       return;
     }
 
     setLoadingRecurring(true);
     try {
-      // AvanÃ§a a partir da data de inÃ­cio atÃ© o prÃ³ximo vencimento futuro
+      // Avança a partir da data de início até o próximo vencimento futuro
       let nextDueDate = expense.startDate;
       const today = new Date().toISOString().split('T')[0];
       while (nextDueDate <= today) {
@@ -984,7 +984,7 @@ function App() {
         toast.error(data.error || 'Erro ao adicionar despesa recorrente');
       }
     } catch (error) {
-      toast.error('Erro de conexÃ£o ao adicionar despesa recorrente');
+      toast.error('Erro de conexão ao adicionar despesa recorrente');
     } finally {
       setLoadingRecurring(false);
     }
@@ -998,12 +998,12 @@ function App() {
       });
       if (response.ok) {
         await fetchRecurringExpenses();
-        toast.success('Despesa recorrente excluÃ­da com sucesso!');
+        toast.success('Despesa recorrente excluída com sucesso!');
       } else {
         toast.error('Erro ao excluir despesa recorrente');
       }
     } catch (error) {
-      toast.error('Erro de conexÃ£o ao excluir despesa recorrente');
+      toast.error('Erro de conexão ao excluir despesa recorrente');
     } finally {
       setLoadingRecurring(false);
     }
@@ -1017,7 +1017,7 @@ function App() {
       const freq = expense.frequency || expense.recurrence;
       const catId = RECURRING_CAT_MAP[expense.category] || 'out-desp';
 
-      // 1. Criar transaÃ§Ã£o de despesa
+      // 1. Criar transação de despesa
       const txRes = await fetch(`${config.API_URL}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1031,11 +1031,11 @@ function App() {
         })
       });
       if (!txRes.ok) {
-        toast.error('Erro ao registrar transaÃ§Ã£o');
+        toast.error('Erro ao registrar transação');
         return;
       }
 
-      // 2. AvanÃ§ar prÃ³ximo vencimento
+      // 2. Avançar próximo vencimento
       const newDue = calcNextDue(dueDate, freq);
       await fetch(`${config.API_URL}/recurring-expenses/${expense.id}`, {
         method: 'PUT',
@@ -1052,7 +1052,7 @@ function App() {
 
       await fetchTransactions();
       await fetchRecurringExpenses();
-      toast.success(`âœ… Pagamento registrado! PrÃ³ximo vencimento: ${new Date(newDue + 'T00:00:00').toLocaleDateString('pt-BR')}`);
+      toast.success(`✅ Pagamento registrado! Próximo vencimento: ${new Date(newDue + 'T00:00:00').toLocaleDateString('pt-BR')}`);
     } catch (error) {
       toast.error('Erro ao registrar pagamento');
     } finally {
@@ -1076,20 +1076,20 @@ function App() {
       toast.error('Erro ao atualizar despesa recorrente');
       return false;
     } catch (error) {
-      toast.error('Erro de conexÃ£o');
+      toast.error('Erro de conexão');
       return false;
     } finally {
       setLoadingRecurring(false);
     }
   }, [fetchRecurringExpenses]);
 
-  // ============ ORÃ‡AMENTOS ============
+  // ============ ORÇAMENTOS ============
   const fetchBudgets = useCallback(async () => {
     if (!currentUser?.email) return;
     try {
       const res = await fetch(`${config.API_URL}/budgets?userId=${encodeURIComponent(currentUser.email)}`);
       if (res.ok) setBudgets(await res.json());
-    } catch (e) { console.error('Erro ao buscar orÃ§amentos', e); }
+    } catch (e) { console.error('Erro ao buscar orçamentos', e); }
   }, [currentUser]);
 
   useEffect(() => { if (isAuthenticated) fetchBudgets(); }, [isAuthenticated, fetchBudgets]);
@@ -1100,13 +1100,13 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...data, userId: currentUser.email })
     });
-    if (res.ok) { await fetchBudgets(); toast.success('OrÃ§amento criado!'); return true; }
-    const d = await res.json(); toast.error(d.error || 'Erro ao criar orÃ§amento'); return false;
+    if (res.ok) { await fetchBudgets(); toast.success('Orçamento criado!'); return true; }
+    const d = await res.json(); toast.error(d.error || 'Erro ao criar orçamento'); return false;
   }, [currentUser, fetchBudgets]);
 
   const deleteBudget = useCallback(async (id) => {
     const res = await fetch(`${config.API_URL}/budgets/${id}`, { method: 'DELETE' });
-    if (res.ok) { await fetchBudgets(); toast.success('OrÃ§amento removido!'); }
+    if (res.ok) { await fetchBudgets(); toast.success('Orçamento removido!'); }
   }, [fetchBudgets]);
 
   const updateBudget = useCallback(async (id, data) => {
@@ -1115,7 +1115,7 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (res.ok) { await fetchBudgets(); toast.success('OrÃ§amento atualizado!'); return true; }
+    if (res.ok) { await fetchBudgets(); toast.success('Orçamento atualizado!'); return true; }
     return false;
   }, [fetchBudgets]);
 
@@ -1157,14 +1157,14 @@ function App() {
 
   const transferBetweenWallets = useCallback(async (fromId, toId, amount, description, date) => {
     if (!isApiAvailable) {
-      toast.error('ConexÃ£o com servidor necessÃ¡ria para transferÃªncias.');
+      toast.error('Conexão com servidor necessária para transferências.');
       return false;
     }
     const from = wallets.find(w => w.id === fromId);
     const to = wallets.find(w => w.id === toId);
-    if (!from || !to) { toast.error('Conta nÃ£o encontrada!'); return false; }
+    if (!from || !to) { toast.error('Conta não encontrada!'); return false; }
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0) { toast.error('Valor invÃ¡lido!'); return false; }
+    if (isNaN(amt) || amt <= 0) { toast.error('Valor inválido!'); return false; }
     if (fromId === toId) { toast.error('Selecione contas diferentes!'); return false; }
     try {
       const res = await fetch(`${config.API_URL}/transfers`, {
@@ -1175,19 +1175,19 @@ function App() {
           fromWalletId: fromId,
           toWalletId: toId,
           amount: amt,
-          description: description || 'TransferÃªncia',
+          description: description || 'Transferência',
           date: date || new Date().toISOString().split('T')[0]
         })
       });
       const data = await res.json();
       if (res.ok) {
         await Promise.all([fetchWallets(), fetchTransactions()]);
-        toast.success(`ðŸ”„ TransferÃªncia de R$ ${amt.toFixed(2)} realizada de "${from.name}" para "${to.name}"!`);
+        toast.success(`🔄 Transferência de R$ ${amt.toFixed(2)} realizada de "${from.name}" para "${to.name}"!`);
         return true;
       }
-      toast.error(data.error || 'Erro na transferÃªncia!');
+      toast.error(data.error || 'Erro na transferência!');
       return false;
-    } catch (e) { toast.error('Erro de conexÃ£o na transferÃªncia!'); return false; }
+    } catch (e) { toast.error('Erro de conexão na transferência!'); return false; }
   }, [wallets, fetchWallets, fetchTransactions, currentUser, isApiAvailable]);
 
   // ============ METAS ============
@@ -1251,7 +1251,7 @@ function App() {
 
     setDueAlerts(alerts);
 
-    // Enviar notificaÃ§Ãµes browser para despesas vencidas/prÃ³ximas
+    // Enviar notificações browser para despesas vencidas/próximas
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
         const notified = new Set(JSON.parse(sessionStorage.getItem('notifiedExpenses') || '[]'));
@@ -1259,21 +1259,21 @@ function App() {
           const key = `${alert.id}-${alert.nextDue}`;
           if (!notified.has(key)) {
             const title = alert.overdue
-              ? `âš ï¸ Despesa Vencida: ${alert.description}`
-              : `ðŸ”” Vence em ${alert.daysUntilDue} dia(s): ${alert.description}`;
+              ? `⚠️ Despesa Vencida: ${alert.description}`
+              : `🔔 Vence em ${alert.daysUntilDue} dia(s): ${alert.description}`;
             new Notification(title, {
-              body: `Valor: R$ ${parseFloat(alert.value).toFixed(2)} â€¢ Vencimento: ${alert.nextDue}`,
+              body: `Valor: R$ ${parseFloat(alert.value).toFixed(2)} • Vencimento: ${alert.nextDue}`,
               icon: '/favicon.ico'
             });
             notified.add(key);
           }
         });
         sessionStorage.setItem('notifiedExpenses', JSON.stringify([...notified]));
-      } catch (e) { /* ignora erros de notificaÃ§Ã£o */ }
+      } catch (e) { /* ignora erros de notificação */ }
     }
   };
 
-  // Solicitar permissÃ£o para notificaÃ§Ãµes browser ao autenticar
+  // Solicitar permissão para notificações browser ao autenticar
   useEffect(() => {
     if (isAuthenticated && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -1328,9 +1328,9 @@ function App() {
       id: 'exp-' + a.id + '-' + a.nextDue,
       type: a.overdue ? 'overdue' : 'due-soon',
       priority: a.overdue ? 0 : 1,
-      icon: a.overdue ? '🔴' : '🟡',
+      icon: a.overdue ? '��' : '��',
       title: a.overdue ? 'Despesa Vencida' : ('Vence em ' + a.daysUntilDue + ' dia(s)'),
-      body: a.description + ' — R$ ' + parseFloat(a.value).toFixed(2),
+      body: a.description + ' � R$ ' + parseFloat(a.value).toFixed(2),
       date: a.nextDue,
     }));
 
@@ -1350,7 +1350,7 @@ function App() {
             id: 'budget-' + b.id + '-' + currentMonth,
             type: pct >= 100 ? 'over-budget' : 'near-budget',
             priority: pct >= 100 ? 0 : 1,
-            icon: pct >= 100 ? '🔴' : '🟡',
+            icon: pct >= 100 ? '��' : '��',
             title: pct >= 100 ? 'Orcamento Estourado' : 'Orcamento Quase no Limite',
             body: b.category + ': R$ ' + spent.toFixed(2) + ' / R$ ' + limit.toFixed(2) + ' (' + pct.toFixed(0) + '%)',
             date: currentMonth,
@@ -1369,9 +1369,9 @@ function App() {
           id: 'goal-done-' + g.id,
           type: 'goal-achieved',
           priority: 2,
-          icon: '🏆',
+          icon: '��',
           title: 'Meta Alcancada!',
-          body: g.name + ' — R$ ' + curr.toFixed(2) + ' / R$ ' + target.toFixed(2),
+          body: g.name + ' � R$ ' + curr.toFixed(2) + ' / R$ ' + target.toFixed(2),
           date: g.deadline || '',
         });
       } else if (g.deadline) {
@@ -1381,9 +1381,9 @@ function App() {
             id: 'goal-overdue-' + g.id,
             type: 'goal-overdue',
             priority: 0,
-            icon: '🔴',
+            icon: '��',
             title: 'Meta com Prazo Vencido',
-            body: g.name + ' — ' + pct.toFixed(0) + '% concluida',
+            body: g.name + ' � ' + pct.toFixed(0) + '% concluida',
             date: g.deadline,
           });
         } else if (diff <= 30) {
@@ -1391,9 +1391,9 @@ function App() {
             id: 'goal-dl-' + g.id,
             type: 'goal-deadline',
             priority: 1,
-            icon: '🎯',
+            icon: '��',
             title: 'Meta vence em ' + diff + ' dia(s)',
-            body: g.name + ' — ' + pct.toFixed(0) + '% concluida',
+            body: g.name + ' � ' + pct.toFixed(0) + '% concluida',
             date: g.deadline,
           });
         }
@@ -1431,7 +1431,7 @@ function App() {
 
   const isAdmin = currentUser?.email === 'junior395@gmail.com';
 
-  // Se nÃ£o estiver autenticado, mostrar tela de login
+  // Se não estiver autenticado, mostrar tela de login
   if (!isAuthenticated) {
     return (
       <Login
@@ -1446,7 +1446,7 @@ function App() {
     <div className={`app${darkMode ? ' dark-mode' : ''}`}>
       <LoadingOverlay
         show={loadingTransactions}
-        message="Processando transaÃ§Ã£o..."
+        message="Processando transação..."
       />
       <LoadingOverlay
         show={loadingRecurring}
@@ -1454,24 +1454,24 @@ function App() {
       />
       <header className="header">
         <div className="header-top">
-          <h1>ðŸ’° Gestor Financeiro</h1>
+          <h1>💰 Gestor Financeiro</h1>
           <div className="header-controls">
             <div className="connectivity-status">
               {apiChecked && (
                 <span className={`status-indicator ${isApiAvailable ? 'online' : 'offline'}`}>
-                  {isApiAvailable ? 'ðŸŸ¢ Online' : 'ðŸ”´ Offline'}
+                  {isApiAvailable ? '🟢 Online' : '🔴 Offline'}
                 </span>
               )}
             </div>
             <div className="user-info">
-              <span>ðŸ‘¤ {currentUser?.name || currentUser?.username}</span>
+              <span>👤 {currentUser?.name || currentUser?.username}</span>
               {isAdmin && (
                 <button
                   className={activeTab === 'usuarios' ? 'active' : ''}
                   onClick={() => setActiveTab('usuarios')}
-                  title="Gerenciar UsuÃ¡rios"
+                  title="Gerenciar Usuários"
                 >
-                  ðŸ‘¥ UsuÃ¡rios
+                  👥 Usuários
                 </button>
               )}
               <button
@@ -1479,14 +1479,14 @@ function App() {
                 onClick={handleLogout}
                 title="Sair"
               >
-                ðŸšª Sair
+                🚪 Sair
               </button>
               <div className="currency-selector-wrap">
                 <button
                   className="currency-panel-btn"
-                  title="Painel de câmbio"
+                  title="Painel de c�mbio"
                   onClick={() => setCurrencyPanelOpen(v => !v)}
-                >💱</button>
+                >��</button>
                 <select
                   className="currency-select"
                   value={activeCurrency}
@@ -1504,7 +1504,7 @@ function App() {
                   onClick={() => setNotifOpen(o => !o)}
                   title="Notificacoes"
                 >
-                  🔔
+                  ��
                   {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </button>
               </div>
@@ -1514,7 +1514,7 @@ function App() {
                 title={darkMode ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                 style={{ marginLeft: '6px' }}
               >
-                {darkMode ? '☀️' : '🌙'}
+                {darkMode ? '☀️' : '��'}
               </button>
             </div>
           </div>
@@ -1524,67 +1524,67 @@ function App() {
             className={activeTab === 'dashboard' ? 'active' : ''}
             onClick={() => setActiveTab('dashboard')}
           >
-            ðŸ“Š Dashboard
+            📊 Dashboard
           </button>
           <button
             className={activeTab === 'entradas' ? 'active' : ''}
             onClick={() => setActiveTab('entradas')}
           >
-            ðŸ’µ Entradas
+            💵 Entradas
           </button>
           <button
             className={activeTab === 'despesas' ? 'active' : ''}
             onClick={() => setActiveTab('despesas')}
           >
-            ðŸ’¸ Despesas
+            💸 Despesas
           </button>
           <button
             className={activeTab === 'relatorios' ? 'active' : ''}
             onClick={() => setActiveTab('relatorios')}
           >
-            ðŸ“ˆ RelatÃ³rios
+            📈 Relatórios
           </button>
           <button
             className={activeTab === 'historico' ? 'active' : ''}
             onClick={() => setActiveTab('historico')}
           >
-            ðŸ“‹ HistÃ³rico
+            📋 Histórico
           </button>
           <button
             className={activeTab === 'recorrentes' ? 'active' : ''}
             onClick={() => setActiveTab('recorrentes')}
           >
-            ðŸ”„ Recorrentes
+            🔄 Recorrentes
           </button>
           <button
             className={activeTab === 'categorias' ? 'active' : ''}
             onClick={() => setActiveTab('categorias')}
           >
-            ðŸ·ï¸ Categorias
+            🏷️ Categorias
           </button>
           <button
             className={activeTab === 'orcamentos' ? 'active' : ''}
             onClick={() => setActiveTab('orcamentos')}
           >
-            ðŸŽ¯ OrÃ§amentos
+            🎯 Orçamentos
           </button>
           <button
             className={activeTab === 'contas' ? 'active' : ''}
             onClick={() => setActiveTab('contas')}
           >
-            ðŸ¦ Contas
+            🏦 Contas
           </button>
           <button
             className={activeTab === 'metas' ? 'active' : ''}
             onClick={() => setActiveTab('metas')}
           >
-            ðŸ† Metas
+            🏆 Metas
           </button>
           <button
             className={activeTab === 'importar' ? 'active' : ''}
             onClick={() => setActiveTab('importar')}
           >
-            ðŸ“¥ Importar
+            📥 Importar
           </button>
         </nav>
       </header>
@@ -1607,7 +1607,7 @@ function App() {
               type="entrada"
               onAdd={addTransaction}
               onAddBatch={addTransactionBatch}
-              title="ðŸ’µ LanÃ§ar Entrada"
+              title="💵 Lançar Entrada"
               categories={categories}
               isApiAvailable={isApiAvailable}
               wallets={wallets}
@@ -1618,7 +1618,7 @@ function App() {
               type="despesa"
               onAdd={addTransaction}
               onAddBatch={addTransactionBatch}
-              title="ðŸ’¸ LanÃ§ar Despesa"
+              title="💸 Lançar Despesa"
               categories={categories}
               isApiAvailable={isApiAvailable}
               wallets={wallets}
@@ -1710,7 +1710,7 @@ function App() {
         <div className="notif-overlay" onClick={() => setCurrencyPanelOpen(false)}>
           <div className="notif-panel currency-panel" onClick={e => e.stopPropagation()}>
             <div className="notif-panel-header">
-              <span>💱 Taxas de Câmbio (base: BRL)</span>
+              <span>�� Taxas de C�mbio (base: BRL)</span>
               <button className="notif-close-btn" onClick={() => setCurrencyPanelOpen(false)}>✕</button>
             </div>
             {loadingRates ? (
@@ -1722,20 +1722,20 @@ function App() {
                     <div key={cur.code} className={'rate-item' + (activeCurrency === cur.code ? ' rate-active' : '')} onClick={() => setActiveCurrency(cur.code)}>
                       <span className="rate-flag">{cur.flag}</span>
                       <span className="rate-code">{cur.code}</span>
-                      <span className="rate-val">{exchangeRates[cur.code] ? exchangeRates[cur.code].toFixed(4) : '—'}</span>
+                      <span className="rate-val">{exchangeRates[cur.code] ? exchangeRates[cur.code].toFixed(4) : '�'}</span>
                     </div>
                   ))}
                 </div>
-                {ratesLastUpdate && <div className="rates-updated">🔄 Atualizado: {ratesLastUpdate}</div>}
+                {ratesLastUpdate && <div className="rates-updated">�� Atualizado: {ratesLastUpdate}</div>}
                 <div className="currency-mini-converter">
-                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>🔁 Conversor Rápido</h4>
+                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>�� Conversor R�pido</h4>
                   <CurrencyConverter currencies={CURRENCIES} exchangeRates={exchangeRates} activeCurrency={activeCurrency} />
                 </div>
               </>
             )}
             <div className="notif-panel-footer">
               <button className="notif-email-btn" onClick={fetchExchangeRates} disabled={loadingRates}>
-                {loadingRates ? '⏳ Atualizando...' : '🔄 Atualizar Taxas'}
+                {loadingRates ? '⏳ Atualizando...' : '�� Atualizar Taxas'}
               </button>
             </div>
           </div>
@@ -1747,7 +1747,7 @@ function App() {
         <div className="notif-overlay" onClick={() => setNotifOpen(false)}>
           <div className="notif-panel" onClick={e => e.stopPropagation()}>
             <div className="notif-panel-header">
-              <span>🔔 Notificacoes {allNotifications.length > 0 && '(' + allNotifications.length + ')'}</span>
+              <span>�� Notificacoes {allNotifications.length > 0 && '(' + allNotifications.length + ')'}</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {allNotifications.length > 0 && (
                   <button className="notif-mark-read" onClick={markAllRead}>✅ Lidas</button>
@@ -1756,7 +1756,7 @@ function App() {
               </div>
             </div>
             {allNotifications.length === 0 ? (
-              <div className="notif-empty">🎉 Nenhuma notificacao no momento</div>
+              <div className="notif-empty">�� Nenhuma notificacao no momento</div>
             ) : (
               <div className="notif-list">
                 {allNotifications.map(n => (
@@ -1776,7 +1776,7 @@ function App() {
                 className="notif-email-btn"
                 onClick={() => { setEmailInput(currentUser?.email || ''); setEmailModalOpen(true); }}
               >
-                📧 Enviar resumo por e-mail
+                �� Enviar resumo por e-mail
               </button>
             </div>
           </div>
@@ -1787,7 +1787,7 @@ function App() {
       {emailModalOpen && (
         <div className="modal-overlay" onClick={() => setEmailModalOpen(false)}>
           <div className="modal-content notif-email-modal" onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: '10px' }}>📧 Enviar Resumo por E-mail</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '10px' }}>�� Enviar Resumo por E-mail</h3>
             <p style={{ color: '#94a3b8', marginBottom: '14px', fontSize: '14px', lineHeight: 1.5 }}>
               Enviaremos um resumo das suas notificacoes ativas para:
             </p>
@@ -1802,7 +1802,7 @@ function App() {
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button className="cancel-btn" onClick={() => setEmailModalOpen(false)}>Cancelar</button>
               <button className="submit-btn" onClick={handleSendEmail} disabled={sendingEmail}>
-                {sendingEmail ? '⏳ Enviando...' : '📤 Enviar'}
+                {sendingEmail ? '⏳ Enviando...' : '�� Enviar'}
               </button>
             </div>
           </div>
@@ -1920,7 +1920,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
     email: '',
     password: ''
   });
-  // Recuperação de senha
+  // Recupera��o de senha
   const [forgotStep, setForgotStep] = useState(null); // null | 'email' | 'reset'
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotCode, setForgotCode] = useState('');
@@ -1965,7 +1965,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      toast.error('Erro de conexÃ£o. Verifique sua internet e tente novamente.');
+      toast.error('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
       setLoadingAuth(false);
     }
@@ -1996,12 +1996,12 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
           setForgotCode(data.token);
         }
         setForgotStep('reset');
-        toast.success(data.demo ? '⚠️ Modo demo: código exibido na tela' : 'Código enviado para o e-mail!');
+        toast.success(data.demo ? '⚠️ Modo demo: c�digo exibido na tela' : 'C�digo enviado para o e-mail!');
       } else {
-        toast.error(data.error || 'Erro ao solicitar recuperação');
+        toast.error(data.error || 'Erro ao solicitar recupera��o');
       }
     } catch {
-      toast.error('Erro de conexão. Tente novamente.');
+      toast.error('Erro de conex�o. Tente novamente.');
     } finally {
       setForgotLoading(false);
     }
@@ -2009,7 +2009,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
 
   const handleResetPassword = useCallback(async (e) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { toast.error('As senhas não coincidem.'); return; }
+    if (newPassword !== confirmPassword) { toast.error('As senhas n�o coincidem.'); return; }
     if (newPassword.length < 6) { toast.error('Senha deve ter pelo menos 6 caracteres.'); return; }
     setForgotLoading(true);
     try {
@@ -2020,17 +2020,17 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
       });
       const data = await resp.json();
       if (resp.ok) {
-        toast.success('Senha alterada com sucesso! Faça login.');
+        toast.success('Senha alterada com sucesso! Fa�a login.');
         setForgotStep(null);
         setForgotCode('');
         setNewPassword('');
         setConfirmPassword('');
         setDemoCode('');
       } else {
-        toast.error(data.error || 'Código inválido ou expirado');
+        toast.error(data.error || 'C�digo inv�lido ou expirado');
       }
     } catch {
-      toast.error('Erro de conexão. Tente novamente.');
+      toast.error('Erro de conex�o. Tente novamente.');
     } finally {
       setForgotLoading(false);
     }
@@ -2039,12 +2039,12 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
   return (
     <div className="login-container">
       <div className="login-box">
-        <h1>ðŸ’° Gestor Financeiro</h1>
+        <h1>💰 Gestor Financeiro</h1>
         {!forgotStep && (<>
-          <h2>ðŸ” Login</h2>
+          <h2>🔐 Login</h2>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>ðŸ‘¤ Email:</label>
+              <label>👤 Email:</label>
               <input
                 type="email"
                 value={credentials.email}
@@ -2054,7 +2054,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               />
             </div>
             <div className="form-group">
-              <label>ðŸ”‘ Senha:</label>
+              <label>🔑 Senha:</label>
               <input
                 type="password"
                 value={credentials.password}
@@ -2077,17 +2077,17 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               className="forgot-link"
               onClick={() => { setForgotStep('email'); setForgotEmail(credentials.email || ''); }}
             >
-              🔑 Esqueceu a senha?
+              �� Esqueceu a senha?
             </button>
           </div>
         </>)}
 
         {forgotStep === 'email' && (
           <form onSubmit={handleForgotRequest} className="forgot-form">
-            <h2>🔑 Recuperar Senha</h2>
-            <p className="forgot-info">Informe seu e-mail para receber o código (válido por 15 min).</p>
+            <h2>�� Recuperar Senha</h2>
+            <p className="forgot-info">Informe seu e-mail para receber o c�digo (v�lido por 15 min).</p>
             <div className="form-group">
-              <label>📧 E-mail cadastrado:</label>
+              <label>�� E-mail cadastrado:</label>
               <input
                 type="email"
                 value={forgotEmail}
@@ -2098,7 +2098,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               />
             </div>
             <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
-              Enviar Código
+              Enviar C�digo
             </ButtonSpinner>
             <button type="button" className="forgot-back-btn" onClick={() => setForgotStep(null)}>
               ← Voltar ao login
@@ -2108,14 +2108,14 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
 
         {forgotStep === 'reset' && (
           <form onSubmit={handleResetPassword} className="forgot-form">
-            <h2>🔑 Nova Senha</h2>
+            <h2>�� Nova Senha</h2>
             {demoCode && (
               <div className="demo-code-box">
-                ⚠️ Modo demo — Código: <strong>{demoCode}</strong>
+                ⚠️ Modo demo � C�digo: <strong>{demoCode}</strong>
               </div>
             )}
             <div className="form-group">
-              <label>🔑 Código recebido:</label>
+              <label>�� C�digo recebido:</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -2129,11 +2129,11 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               />
             </div>
             <div className="form-group">
-              <label>🔒 Nova senha:</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} />
+              <label>�� Nova senha:</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="M�nimo 6 caracteres" required minLength={6} />
             </div>
             <div className="form-group">
-              <label>🔒 Confirmar nova senha:</label>
+              <label>�� Confirmar nova senha:</label>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" required />
             </div>
             <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
@@ -2147,7 +2147,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
 
         <div className="login-info">
           <p><strong>Sistema:</strong> Gestor Financeiro</p>
-          <p><strong>Status:</strong> Conectado Ã  API</p>
+          <p><strong>Status:</strong> Conectado à API</p>
         </div>
 
         <div className="login-actions">
@@ -2155,13 +2155,13 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
             type="button"
             className="clear-data-btn"
             onClick={() => {
-              if (window.confirm('âš ï¸ ATENÃ‡ÃƒO: Isso vai limpar apenas os dados do navegador (nÃ£o os dados do servidor). Deseja continuar?')) {
+              if (window.confirm('⚠️ ATENÇÃO: Isso vai limpar apenas os dados do navegador (não os dados do servidor). Deseja continuar?')) {
                 localStorage.clear();
                 window.location.reload();
               }
             }}
           >
-            ðŸ§¹ Limpar Cache do Navegador
+            🧹 Limpar Cache do Navegador
           </button>
         </div>
       </div>
@@ -2169,7 +2169,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
   );
 });
 
-// Componente para gerenciar usuÃ¡rios (apenas admin)
+// Componente para gerenciar usuários (apenas admin)
 function GerenciarUsuarios() {
   const [users, setUsers] = useState([]);
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -2186,7 +2186,7 @@ function GerenciarUsuarios() {
     password: ''
   });
 
-  // Carregar usuÃ¡rios da API
+  // Carregar usuários da API
   const loadUsers = async () => {
     try {
       setLoading(true);
@@ -2195,11 +2195,11 @@ function GerenciarUsuarios() {
         const data = await response.json();
         setUsers(data);
       } else {
-        toast.error('Erro ao carregar usuÃ¡rios');
+        toast.error('Erro ao carregar usuários');
       }
     } catch (error) {
-      console.error('Erro ao carregar usuÃ¡rios:', error);
-      toast.error('Erro de conexÃ£o ao carregar usuÃ¡rios');
+      console.error('Erro ao carregar usuários:', error);
+      toast.error('Erro de conexão ao carregar usuários');
     } finally {
       setLoading(false);
     }
@@ -2209,7 +2209,7 @@ function GerenciarUsuarios() {
     loadUsers();
   }, []);
 
-  // Adicionar novo usuÃ¡rio via API
+  // Adicionar novo usuário via API
   const handleAddUser = async (e) => {
     e.preventDefault();
 
@@ -2231,29 +2231,29 @@ function GerenciarUsuarios() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('UsuÃ¡rio cadastrado com sucesso!');
+        toast.success('Usuário cadastrado com sucesso!');
         setNewUser({ email: '', password: '', name: '' });
         setIsAddingUser(false);
         loadUsers();
       } else {
-        toast.error(data.error || 'Erro ao cadastrar usuÃ¡rio');
+        toast.error(data.error || 'Erro ao cadastrar usuário');
       }
     } catch (error) {
-      console.error('Erro ao cadastrar usuÃ¡rio:', error);
-      toast.error('Erro de conexÃ£o ao cadastrar usuÃ¡rio');
+      console.error('Erro ao cadastrar usuário:', error);
+      toast.error('Erro de conexão ao cadastrar usuário');
     } finally {
       setLoading(false);
     }
   };
 
-  // Abrir formulÃ¡rio de ediÃ§Ã£o
+  // Abrir formulário de edição
   const handleStartEdit = (user) => {
     setEditingUser(user.id);
     setEditForm({ name: user.name, email: user.email, password: '' });
     setIsAddingUser(false);
   };
 
-  // Salvar ediÃ§Ã£o do usuÃ¡rio
+  // Salvar edição do usuário
   const handleUpdateUser = async (e) => {
     e.preventDefault();
 
@@ -2273,29 +2273,29 @@ function GerenciarUsuarios() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('UsuÃ¡rio atualizado com sucesso!');
+        toast.success('Usuário atualizado com sucesso!');
         setEditingUser(null);
         setEditForm({ name: '', email: '', password: '' });
         loadUsers();
       } else {
-        toast.error(data.error || 'Erro ao atualizar usuÃ¡rio');
+        toast.error(data.error || 'Erro ao atualizar usuário');
       }
     } catch (error) {
-      console.error('Erro ao atualizar usuÃ¡rio:', error);
-      toast.error('Erro de conexÃ£o ao atualizar usuÃ¡rio');
+      console.error('Erro ao atualizar usuário:', error);
+      toast.error('Erro de conexão ao atualizar usuário');
     } finally {
       setLoading(false);
     }
   };
 
-  // Remover usuÃ¡rio via API
+  // Remover usuário via API
   const handleRemoveUser = async (userId, userEmail) => {
     if (userEmail === 'junior395@gmail.com') {
-      toast.error('NÃ£o Ã© possÃ­vel remover o administrador principal!');
+      toast.error('Não é possível remover o administrador principal!');
       return;
     }
 
-    if (window.confirm(`Deseja realmente remover o usuÃ¡rio ${userEmail}?`)) {
+    if (window.confirm(`Deseja realmente remover o usuário ${userEmail}?`)) {
       try {
         setLoading(true);
         const response = await fetch(`${config.API_URL}/admin/users/${userId}`, {
@@ -2303,15 +2303,15 @@ function GerenciarUsuarios() {
         });
 
         if (response.ok) {
-          toast.success('UsuÃ¡rio removido com sucesso!');
+          toast.success('Usuário removido com sucesso!');
           loadUsers();
         } else {
           const data = await response.json();
-          toast.error(data.error || 'Erro ao remover usuÃ¡rio');
+          toast.error(data.error || 'Erro ao remover usuário');
         }
       } catch (error) {
-        console.error('Erro ao remover usuÃ¡rio:', error);
-        toast.error('Erro de conexÃ£o ao remover usuÃ¡rio');
+        console.error('Erro ao remover usuário:', error);
+        toast.error('Erro de conexão ao remover usuário');
       } finally {
         setLoading(false);
       }
@@ -2320,23 +2320,23 @@ function GerenciarUsuarios() {
 
   return (
     <div className="usuarios-management">
-      <h2>ðŸ‘¥ Gerenciar UsuÃ¡rios</h2>
+      <h2>👥 Gerenciar Usuários</h2>
 
       <div className="users-actions">
         <button
           onClick={() => { setIsAddingUser(!isAddingUser); setEditingUser(null); }}
           className="add-user-btn"
         >
-          {isAddingUser ? 'âŒ Cancelar' : 'âž• Adicionar UsuÃ¡rio'}
+          {isAddingUser ? '❌ Cancelar' : '➕ Adicionar Usuário'}
         </button>
       </div>
 
       {isAddingUser && (
         <div className="add-user-form">
-          <h3>Adicionar Novo UsuÃ¡rio</h3>
+          <h3>Adicionar Novo Usuário</h3>
           <form onSubmit={handleAddUser}>
             <div className="form-group">
-              <label>ðŸ‘¤ Email:</label>
+              <label>👤 Email:</label>
               <input
                 type="email"
                 value={newUser.email}
@@ -2345,7 +2345,7 @@ function GerenciarUsuarios() {
               />
             </div>
             <div className="form-group">
-              <label>ðŸ‘¨â€ðŸ’¼ Nome:</label>
+              <label>👨‍💼 Nome:</label>
               <input
                 type="text"
                 value={newUser.name}
@@ -2354,7 +2354,7 @@ function GerenciarUsuarios() {
               />
             </div>
             <div className="form-group">
-              <label>ðŸ”‘ Senha:</label>
+              <label>🔑 Senha:</label>
               <input
                 type="password"
                 value={newUser.password}
@@ -2375,17 +2375,17 @@ function GerenciarUsuarios() {
       )}
 
       <div className="users-list">
-        <h3>UsuÃ¡rios Cadastrados</h3>
+        <h3>Usuários Cadastrados</h3>
         {loading ? (
-          <p>Carregando usuÃ¡rios...</p>
+          <p>Carregando usuários...</p>
         ) : users.length === 0 ? (
-          <p>Nenhum usuÃ¡rio cadastrado</p>
+          <p>Nenhum usuário cadastrado</p>
         ) : (
           users.map(user => (
             <div key={user.id} className="user-card">
               {editingUser === user.id ? (
                 <form onSubmit={handleUpdateUser} className="edit-user-form">
-                  <h4>âœï¸ Editar UsuÃ¡rio</h4>
+                  <h4>✏️ Editar Usuário</h4>
                   <div className="form-group">
                     <label>Nome:</label>
                     <input
@@ -2411,15 +2411,15 @@ function GerenciarUsuarios() {
                       value={editForm.password}
                       onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                       minLength="6"
-                      placeholder="Deixe em branco para nÃ£o alterar"
+                      placeholder="Deixe em branco para não alterar"
                     />
                   </div>
                   <div className="edit-form-actions">
                     <ButtonSpinner type="submit" className="submit-btn" loading={loading}>
-                      ðŸ’¾ Salvar
+                      💾 Salvar
                     </ButtonSpinner>
                     <button type="button" onClick={() => setEditingUser(null)} className="cancel-btn">
-                      âŒ Cancelar
+                      ❌ Cancelar
                     </button>
                   </div>
                 </form>
@@ -2435,7 +2435,7 @@ function GerenciarUsuarios() {
                       onClick={() => handleStartEdit(user)}
                       className="edit-btn"
                     >
-                      âœï¸ Editar
+                      ✏️ Editar
                     </button>
                     {user.email !== 'junior395@gmail.com' && (
                       <ButtonSpinner
@@ -2443,7 +2443,7 @@ function GerenciarUsuarios() {
                         className="remove-btn"
                         loading={loading}
                       >
-                        ðŸ—‘ï¸ Remover
+                        🗑️ Remover
                       </ButtonSpinner>
                     )}
                   </div>
@@ -2469,18 +2469,18 @@ const CategoryManagement = React.memo(({
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryForm, setCategoryForm] = useState({
     name: '',
-    icon: 'ðŸ’°',
+    icon: '💰',
     color: '#6b7280'
   });
 
-  // Resetar formulÃ¡rio
+  // Resetar formulário
   const resetForm = useCallback(() => {
-    setCategoryForm({ name: '', icon: 'ðŸ’°', color: '#6b7280' });
+    setCategoryForm({ name: '', icon: '💰', color: '#6b7280' });
     setIsAddingCategory(false);
     setEditingCategory(null);
   }, []);
 
-  // Preparar ediÃ§Ã£o
+  // Preparar edição
   const startEdit = useCallback((category) => {
     setCategoryForm({
       name: category.name,
@@ -2491,7 +2491,7 @@ const CategoryManagement = React.memo(({
     setIsAddingCategory(false);
   }, []);
 
-  // Submeter formulÃ¡rio
+  // Submeter formulário
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
 
@@ -2508,7 +2508,7 @@ const CategoryManagement = React.memo(({
     }
   }, [editingCategory, activeType, categoryForm, onUpdateCategory, onAddCategory, resetForm]);
 
-  // Confirmar exclusÃ£o
+  // Confirmar exclusão
   const handleDelete = useCallback((category) => {
     if (window.confirm(`Deseja realmente excluir a categoria "${category.name}"?`)) {
       onDeleteCategory(activeType, category.id);
@@ -2517,20 +2517,20 @@ const CategoryManagement = React.memo(({
 
   return (
     <div className="category-management">
-      <h2>ðŸ·ï¸ Gerenciar Categorias</h2>
+      <h2>🏷️ Gerenciar Categorias</h2>
 
       <div className="category-type-tabs">
         <button
           className={activeType === 'despesa' ? 'active' : ''}
           onClick={() => setActiveType('despesa')}
         >
-          ðŸ’¸ Despesas
+          💸 Despesas
         </button>
         <button
           className={activeType === 'entrada' ? 'active' : ''}
           onClick={() => setActiveType('entrada')}
         >
-          ðŸ’µ Receitas
+          💵 Receitas
         </button>
       </div>
 
@@ -2540,7 +2540,7 @@ const CategoryManagement = React.memo(({
           onClick={() => setIsAddingCategory(true)}
           disabled={isAddingCategory || editingCategory}
         >
-          âž• Nova Categoria
+          ➕ Nova Categoria
         </button>
       </div>
 
@@ -2554,14 +2554,14 @@ const CategoryManagement = React.memo(({
               type="text"
               value={categoryForm.name}
               onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-              placeholder="Ex: EducaÃ§Ã£o, Investimentos..."
+              placeholder="Ex: Educação, Investimentos..."
               maxLength={30}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Ãcone:</label>
+            <label>Ícone:</label>
             <div className="icon-selector">
               {CategoryManager.availableIcons.map(icon => (
                 <button
@@ -2625,14 +2625,14 @@ const CategoryManagement = React.memo(({
                     onClick={() => startEdit(category)}
                     disabled={isAddingCategory || editingCategory}
                   >
-                    âœï¸
+                    ✏️
                   </button>
                   <button
                     className="delete-btn"
                     onClick={() => handleDelete(category)}
                     disabled={isAddingCategory || editingCategory}
                   >
-                    ðŸ—‘ï¸
+                    🗑️
                   </button>
                 </div>
               )}
@@ -2646,14 +2646,14 @@ const CategoryManagement = React.memo(({
 
 // Dashboard com resumo financeiro otimizado
 const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [], categories, wallets = [], fmtCurrency }) => {
-  // Fallback para BRL se fmtCurrency não disponível
+  // Fallback para BRL se fmtCurrency n�o dispon�vel
   const fmt = fmtCurrency || ((v) => 'R$ ' + v.toFixed(2));
   const now = new Date();
   const currentMonth = now.toISOString().slice(0, 7);
   const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth = prevDate.toISOString().slice(0, 7);
 
-  // Dados dos Ãºltimos 6 meses para o grÃ¡fico de barras
+  // Dados dos últimos 6 meses para o gráfico de barras
   const last6Months = useMemo(() => {
     const nowD = new Date();
     return Array.from({ length: 6 }, (_, i) => {
@@ -2670,10 +2670,10 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
     });
   }, [transactions]);
 
-  // Mapeamento IDâ†’nome para calcular gastos por orÃ§amento
+  // Mapeamento ID→nome para calcular gastos por orçamento
   const categoriasDesp = categories?.despesa || [
-    { id: 'alim', name: 'AlimentaÃ§Ã£o' }, { id: 'trans', name: 'Transporte' },
-    { id: 'mor', name: 'Moradia' }, { id: 'sau', name: 'SaÃºde' },
+    { id: 'alim', name: 'Alimentação' }, { id: 'trans', name: 'Transporte' },
+    { id: 'mor', name: 'Moradia' }, { id: 'sau', name: 'Saúde' },
     { id: 'laz', name: 'Lazer' }, { id: 'out-desp', name: 'Outros' }
   ];
 
@@ -2685,18 +2685,18 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
     [categories]
   );
   const resolveCat = (id) => {
-    if (!id || id === 'transferencia') return id === 'transferencia' ? 'TransferÃªncia' : id;
+    if (!id || id === 'transferencia') return id === 'transferencia' ? 'Transferência' : id;
     const found = allCatsFlat.find(c => c.id === id);
     return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
   };
 
-  // TransaÃ§Ãµes do mÃªs atual
+  // Transações do mês atual
   const monthlyTransactions = useMemo(() =>
     transactions.filter(t => t.date.startsWith(currentMonth)),
     [transactions, currentMonth]
   );
 
-  // TransaÃ§Ãµes do mÃªs anterior
+  // Transações do mês anterior
   const prevMonthTransactions = useMemo(() =>
     transactions.filter(t => t.date.startsWith(prevMonth)),
     [transactions, prevMonth]
@@ -2725,7 +2725,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
     [prevMonthTransactions]
   );
 
-  // Gastos por categoria no mÃªs (para o grÃ¡fico de pizza)
+  // Gastos por categoria no mês (para o gráfico de pizza)
   const pieData = useMemo(() => {
     const map = {};
     monthlyTransactions
@@ -2744,7 +2744,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
   const PIE_COLORS = ['#6366f1', '#e74c3c', '#f59e0b', '#2ecc71', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
 
   const pctChange = (curr, prev) => {
-    if (prev === 0) return curr > 0 ? '+100%' : 'â€”';
+    if (prev === 0) return curr > 0 ? '+100%' : '—';
     const p = ((curr - prev) / prev * 100);
     return (p >= 0 ? '+' : '') + p.toFixed(0) + '%';
   };
@@ -2755,7 +2755,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
     return up ? '#2ecc71' : '#e74c3c';
   };
 
-  // Alertas de metas prÃ³ximas do prazo (â‰¤30 dias)
+  // Alertas de metas próximas do prazo (≤30 dias)
   const goalAlerts = useMemo(() => goals.filter(g => {
     if (!g.deadline) return false;
     const deadline = new Date(g.deadline + 'T00:00:00');
@@ -2766,49 +2766,49 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
 
   return (
     <div className="dashboard">
-      <h2>ðŸ“Š Dashboard â€” {now.toLocaleDateString('pt-BR', { year: 'numeric', month: 'long' })}</h2>
+      <h2>📊 Dashboard — {now.toLocaleDateString('pt-BR', { year: 'numeric', month: 'long' })}</h2>
 
-      {/* 4 Cards do mÃªs */}
+      {/* 4 Cards do mês */}
       <div className="cards cards-4">
         <div className="card entradas">
-          <div className="card-label">ðŸ’µ ENTRADAS</div>
+          <div className="card-label">💵 ENTRADAS</div>
           <div className="card-value">{fmt(totalEntradas)}</div>
           {prevEntradas > 0 || totalEntradas > 0 ? (
             <div className="card-trend" style={{ color: pctColor(totalEntradas, prevEntradas) }}>
-              {pctChange(totalEntradas, prevEntradas)} vs mÃªs anterior
+              {pctChange(totalEntradas, prevEntradas)} vs mês anterior
             </div>
           ) : null}
         </div>
         <div className="card despesas">
-          <div className="card-label">ðŸ’¸ DESPESAS</div>
+          <div className="card-label">💸 DESPESAS</div>
           <div className="card-value">{fmt(totalDespesas)}</div>
           {prevDespesas > 0 || totalDespesas > 0 ? (
             <div className="card-trend" style={{ color: pctColor(totalDespesas, prevDespesas, true) }}>
-              {pctChange(totalDespesas, prevDespesas)} vs mÃªs anterior
+              {pctChange(totalDespesas, prevDespesas)} vs mês anterior
             </div>
           ) : null}
         </div>
         <div className={`card saldo ${saldo >= 0 ? 'positive' : 'negative'}`}>
-          <div className="card-label">ðŸ”¥ SALDO</div>
+          <div className="card-label">🔥 SALDO</div>
           <div className="card-value">{fmt(saldo)}</div>
           <div className="card-trend" style={{ color: saldo >= 0 ? '#2ecc71' : '#e74c3c' }}>
-            {saldo >= 0 ? 'âœ… Positivo' : 'âš ï¸ Negativo'}
+            {saldo >= 0 ? '✅ Positivo' : '⚠️ Negativo'}
           </div>
         </div>
         <div className={`card poupanca ${taxaPoupanca >= 20 ? 'positive' : taxaPoupanca >= 0 ? '' : 'negative'}`}>
-          <div className="card-label">ðŸ’° POUPANÃ‡A</div>
+          <div className="card-label">💰 POUPANÇA</div>
           <div className="card-value">{taxaPoupanca.toFixed(1)}%</div>
           <div className="card-trend" style={{ color: taxaPoupanca >= 20 ? '#2ecc71' : taxaPoupanca >= 0 ? '#f59e0b' : '#e74c3c' }}>
-            {taxaPoupanca >= 20 ? 'ðŸŒŸ Excelente' : taxaPoupanca >= 10 ? 'ðŸ‘ Bom' : taxaPoupanca >= 0 ? 'âš ï¸ AtenÃ§Ã£o' : 'ðŸ”´ Negativo'}
+            {taxaPoupanca >= 20 ? '🌟 Excelente' : taxaPoupanca >= 10 ? '👍 Bom' : taxaPoupanca >= 0 ? '⚠️ Atenção' : '🔴 Negativo'}
           </div>
         </div>
       </div>
 
-      {/* GrÃ¡ficos lado a lado */}
+      {/* Gráficos lado a lado */}
       <div className="dashboard-charts-grid">
-        {/* GrÃ¡fico de barras â€” Ãºltimos 6 meses */}
+        {/* Gráfico de barras — últimos 6 meses */}
         <div className="chart-section">
-          <h3>ðŸ“Š EvoluÃ§Ã£o dos Ãšltimos 6 Meses</h3>
+          <h3>📊 Evolução dos Últimos 6 Meses</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={last6Months} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
@@ -2822,11 +2822,11 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
           </ResponsiveContainer>
         </div>
 
-        {/* GrÃ¡fico de pizza â€” gastos por categoria no mÃªs */}
+        {/* Gráfico de pizza — gastos por categoria no mês */}
         <div className="chart-section">
-          <h3>ðŸ¥§ Gastos por Categoria â€” {now.toLocaleDateString('pt-BR', { month: 'long' })}</h3>
+          <h3>🥧 Gastos por Categoria — {now.toLocaleDateString('pt-BR', { month: 'long' })}</h3>
           {pieData.length === 0 ? (
-            <div className="empty-chart">Sem despesas no mÃªs atual</div>
+            <div className="empty-chart">Sem despesas no mês atual</div>
           ) : (
             <div className="pie-chart-wrapper">
               <ResponsiveContainer width="100%" height={200}>
@@ -2864,7 +2864,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
       {/* Progresso das Metas */}
       {goals.length > 0 && (
         <div className="dashboard-goals">
-          <h3>ðŸ† Progresso das Metas</h3>
+          <h3>🏆 Progresso das Metas</h3>
           <div className="goals-grid">
             {goals.slice(0, 6).map(g => {
               const curr = parseFloat(g.current_amount || 0);
@@ -2875,7 +2875,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
               return (
                 <div key={g.id} className={`dash-goal-card ${done ? 'completed' : ''}`}>
                   <div className="dash-goal-header">
-                    <span className="dash-goal-name">{done ? 'âœ… ' : 'ðŸŽ¯ '}{g.name}</span>
+                    <span className="dash-goal-name">{done ? '✅ ' : '🎯 '}{g.name}</span>
                     <span className="dash-goal-pct">{pct.toFixed(0)}%</span>
                   </div>
                   <div className="dash-goal-bar-wrap">
@@ -2891,7 +2891,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
                   </div>
                   {g.deadline && (
                     <div className="dash-goal-deadline">
-                      ðŸ“… {new Date(g.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      📅 {new Date(g.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </div>
                   )}
                 </div>
@@ -2904,7 +2904,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
       {/* Alertas de Vencimento de Recorrentes */}
       {dueAlerts.length > 0 && (
         <div className="due-alerts">
-          <h3>âš ï¸ Alertas de Vencimento</h3>
+          <h3>⚠️ Alertas de Vencimento</h3>
           {dueAlerts.map(alert => (
             <div key={alert.id} className={`alert-item ${alert.overdue ? 'overdue' : 'due-soon'}`}>
               <div className="alert-info">
@@ -2913,7 +2913,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
               </div>
               <div className="alert-date">
                 <span className={`alert-status ${alert.overdue ? 'overdue' : 'due-soon'}`}>
-                  {alert.overdue ? 'ðŸ”´ Vencida' : `ðŸŸ¡ Vence em ${alert.daysUntilDue} dia(s)`}
+                  {alert.overdue ? '🔴 Vencida' : `🟡 Vence em ${alert.daysUntilDue} dia(s)`}
                 </span>
                 <span className="alert-due-date">{alert.nextDue}</span>
               </div>
@@ -2922,10 +2922,10 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
         </div>
       )}
 
-      {/* Alertas de Metas com prazo prÃ³ximo */}
+      {/* Alertas de Metas com prazo próximo */}
       {goalAlerts.length > 0 && (
         <div className="due-alerts" style={{ borderLeftColor: '#8b5cf6' }}>
-          <h3>ðŸŽ¯ Metas com Prazo PrÃ³ximo</h3>
+          <h3>🎯 Metas com Prazo Próximo</h3>
           {goalAlerts.map(g => {
             const curr = parseFloat(g.current_amount || 0);
             const target = parseFloat(g.target_amount);
@@ -2938,7 +2938,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
                   <span className="alert-value">Falta {fmt(falta)}</span>
                 </div>
                 <div className="alert-date">
-                  <span className="alert-status due-soon">ðŸŸ¡ Prazo em {diff} dia(s)</span>
+                  <span className="alert-status due-soon">🟡 Prazo em {diff} dia(s)</span>
                   <span className="alert-due-date">{new Date(g.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                 </div>
               </div>
@@ -2947,11 +2947,11 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
         </div>
       )}
 
-      {/* Resumo de OrÃ§amentos */}
+      {/* Resumo de Orçamentos */}
       {budgets.length > 0 && (
         <div className="dashboard-budgets">
           <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            ðŸ“Š OrÃ§amentos do MÃªs
+            📊 Orçamentos do Mês
           </h3>
           <div className="dashboard-budget-grid">
             {budgets.filter(b => b.period === 'monthly' || b.period === 'mensal').map(b => {
@@ -2991,7 +2991,7 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
       {/* Saldo das contas */}
       {wallets.length > 0 && (
         <div className="dashboard-wallets">
-          <h3>ðŸ¦ Saldo das Contas</h3>
+          <h3>🏦 Saldo das Contas</h3>
           <div className="dash-wallets-grid">
             {wallets.map(w => (
               <div key={w.id} className="dash-wallet-card">
@@ -3007,26 +3007,26 @@ const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [
       )}
 
       <div className="recent-transactions">
-        <h3>ðŸ“‹ Ãšltimas TransaÃ§Ãµes</h3>
+        <h3>📋 Últimas Transações</h3>
         {transactions.length === 0 ? (
-          <p className="no-transactions">Nenhuma transaÃ§Ã£o encontrada</p>
+          <p className="no-transactions">Nenhuma transação encontrada</p>
         ) : (
           transactions.slice(-5).reverse().map(transaction => (
             <div key={transaction.id} className={`transaction-item ${transaction.type}`}>
               <div className="transaction-info">
                 <span className="transaction-icon">
-                  {transaction.type === 'entrada' ? 'ðŸ’µ' : 'ðŸ’¸'}
+                  {transaction.type === 'entrada' ? '💵' : '💸'}
                 </span>
                 <div className="transaction-details">
                   <span className="transaction-description">{transaction.description}</span>
-                  <span className="transaction-category">ðŸ·ï¸ {resolveCat(transaction.category)}</span>
+                  <span className="transaction-category">🏷️ {resolveCat(transaction.category)}</span>
                 </div>
               </div>
               <div className="transaction-amount">
                 <span className={`amount ${transaction.type}`}>
                   {transaction.type === 'entrada' ? '+' : '-'}{fmt(parseFloat(transaction.value))}
                 </span>
-                <span className="transaction-date">ðŸ“… {new Date(transaction.date).toLocaleDateString()}</span>
+                <span className="transaction-date">📅 {new Date(transaction.date).toLocaleDateString()}</span>
               </div>
             </div>
           ))
@@ -3052,17 +3052,17 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
     { value: 'quarterly', label: 'Trimestral' },
     { value: 'semiannual', label: 'Semestral' },
     { value: 'annual', label: 'Anual' },
-    { value: 'fifth-business-day', label: 'Quinto Dia Ãštil' }
+    { value: 'fifth-business-day', label: 'Quinto Dia Útil' }
   ];
-  const categorias = ['AlimentaÃ§Ã£o', 'Transporte', 'Moradia', 'SaÃºde', 'Lazer', 'Outros'];
+  const categorias = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'];
   const formatRec = (r) => recurrenceOptions.find(o => o.value === r)?.label || r;
 
   const getDueStatus = (nextDue) => {
-    if (!nextDue) return { label: 'â€”', cls: '' };
+    if (!nextDue) return { label: '—', cls: '' };
     const today = new Date();
     const due = new Date(nextDue + 'T00:00:00');
     const diff = Math.ceil((due - today) / 86400000);
-    if (diff < 0) return { label: `Vencida hÃ¡ ${Math.abs(diff)}d`, cls: 'overdue' };
+    if (diff < 0) return { label: `Vencida há ${Math.abs(diff)}d`, cls: 'overdue' };
     if (diff === 0) return { label: 'Vence hoje!', cls: 'overdue' };
     if (diff <= 7) return { label: `Vence em ${diff}d`, cls: 'due-soon' };
     return { label: `${due.toLocaleDateString('pt-BR')}`, cls: 'ok' };
@@ -3098,9 +3098,9 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
   return (
     <div className="recurring-expenses">
       <div className="section-header">
-        <h2>ðŸ”„ Despesas Recorrentes</h2>
+        <h2>🔄 Despesas Recorrentes</h2>
         <button className="add-user-btn" onClick={() => setShowAddForm(v => !v)}>
-          {showAddForm ? 'âŒ Cancelar' : 'âž• Nova Recorrente'}
+          {showAddForm ? '❌ Cancelar' : '➕ Nova Recorrente'}
         </button>
       </div>
 
@@ -3110,7 +3110,7 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
           <form onSubmit={handleSubmit}>
             <div className="form-grid-2">
               <div className="form-group">
-                <label>DescriÃ§Ã£o</label>
+                <label>Descrição</label>
                 <input type="text" placeholder="Ex: Aluguel, Internet..." value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })} required />
               </div>
@@ -3127,18 +3127,18 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
                 </select>
               </div>
               <div className="form-group">
-                <label>RecorrÃªncia</label>
+                <label>Recorrência</label>
                 <select value={form.recurrence} onChange={e => setForm({ ...form, recurrence: e.target.value })}>
                   {recurrenceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Data de inÃ­cio</label>
+                <label>Data de início</label>
                 <input type="date" value={form.startDate}
                   onChange={e => setForm({ ...form, startDate: e.target.value })} required />
               </div>
             </div>
-            <button type="submit" className="submit-btn">âœ… Adicionar</button>
+            <button type="submit" className="submit-btn">✅ Adicionar</button>
           </form>
         </div>
       )}
@@ -3156,7 +3156,7 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
                   <form onSubmit={handleUpdate} className="edit-recurring-form">
                     <div className="form-grid-2">
                       <div className="form-group">
-                        <label>DescriÃ§Ã£o</label>
+                        <label>Descrição</label>
                         <input type="text" value={editForm.description}
                           onChange={e => setEditForm({ ...editForm, description: e.target.value })} required />
                       </div>
@@ -3172,20 +3172,20 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
                         </select>
                       </div>
                       <div className="form-group">
-                        <label>RecorrÃªncia</label>
+                        <label>Recorrência</label>
                         <select value={editForm.frequency} onChange={e => setEditForm({ ...editForm, frequency: e.target.value })}>
                           {recurrenceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                       </div>
                       <div className="form-group">
-                        <label>PrÃ³ximo Vencimento</label>
+                        <label>Próximo Vencimento</label>
                         <input type="date" value={editForm.next_due_date}
                           onChange={e => setEditForm({ ...editForm, next_due_date: e.target.value })} required />
                       </div>
                     </div>
                     <div className="edit-form-actions">
-                      <button type="submit" className="submit-btn">ðŸ’¾ Salvar</button>
-                      <button type="button" className="cancel-btn" onClick={() => setEditingId(null)}>âŒ Cancelar</button>
+                      <button type="submit" className="submit-btn">💾 Salvar</button>
+                      <button type="button" className="cancel-btn" onClick={() => setEditingId(null)}>❌ Cancelar</button>
                     </div>
                   </form>
                 ) : (
@@ -3200,9 +3200,9 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
                     </div>
                     <div className="recurring-actions">
                       <span className="recurring-value">R$ {parseFloat(exp.value).toFixed(2)}</span>
-                      <button className="pay-btn" onClick={() => onPay(exp)} title="Marcar como pago">âœ… Pago</button>
-                      <button className="edit-btn" onClick={() => startEdit(exp)} title="Editar">âœï¸</button>
-                      <button className="delete-btn" onClick={() => onDelete(exp.id)} title="Excluir">ðŸ—‘ï¸</button>
+                      <button className="pay-btn" onClick={() => onPay(exp)} title="Marcar como pago">✅ Pago</button>
+                      <button className="edit-btn" onClick={() => startEdit(exp)} title="Editar">✏️</button>
+                      <button className="delete-btn" onClick={() => onDelete(exp.id)} title="Excluir">🗑️</button>
                     </div>
                   </>
                 )}
@@ -3216,24 +3216,24 @@ function DespesasRecorrentes({ expenses, onAdd, onDelete, onPay, onUpdate }) {
 }
 
 
-// Componente OrÃ§amentos
+// Componente Orçamentos
 function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDelete }) {
   const [form, setForm] = useState({ category: '', limit_value: '', period: 'monthly' });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editLimit, setEditLimit] = useState('');
 
-  // Categorias de despesa disponÃ­veis (padrÃ£o + customizadas)
+  // Categorias de despesa disponíveis (padrão + customizadas)
   const categoriasDesp = (categories?.despesa || [
-    { id: 'alim', name: 'AlimentaÃ§Ã£o' }, { id: 'trans', name: 'Transporte' },
-    { id: 'mor', name: 'Moradia' }, { id: 'sau', name: 'SaÃºde' },
+    { id: 'alim', name: 'Alimentação' }, { id: 'trans', name: 'Transporte' },
+    { id: 'mor', name: 'Moradia' }, { id: 'sau', name: 'Saúde' },
     { id: 'laz', name: 'Lazer' }, { id: 'out-desp', name: 'Outros' }
   ]);
   const periodos = [{ value: 'monthly', label: 'Mensal' }, { value: 'annual', label: 'Anual' }];
 
   const now = new Date();
 
-  // Retorna os IDs de categoria que correspondem ao nome do orÃ§amento
+  // Retorna os IDs de categoria que correspondem ao nome do orçamento
   const getCatIds = (name) =>
     categoriasDesp.filter(c => c.name.toLowerCase() === name.toLowerCase()).map(c => c.id);
 
@@ -3242,7 +3242,7 @@ function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDele
     return transactions
       .filter(t => {
         if (t.type !== 'despesa') return false;
-        // TranspaÃ§Ã£o armazena category como ID (ex: 'mor'); compara diretamente com os IDs do orÃ§amento
+        // Transpação armazena category como ID (ex: 'mor'); compara diretamente com os IDs do orçamento
         if (!catIds.includes(t.category)) return false;
         const d = new Date(t.date + (t.date.includes('T') ? '' : 'T00:00:00'));
         if (period === 'monthly') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -3262,15 +3262,15 @@ function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDele
   return (
     <div className="orcamentos-section">
       <div className="section-header">
-        <h2>ðŸ“Š OrÃ§amentos</h2>
+        <h2>📊 Orçamentos</h2>
         <button className="add-user-btn" onClick={() => setShowForm(v => !v)}>
-          {showForm ? 'âŒ Cancelar' : 'âž• Novo OrÃ§amento'}
+          {showForm ? '❌ Cancelar' : '➕ Novo Orçamento'}
         </button>
       </div>
 
       {showForm && (
         <div className="add-user-form">
-          <h3>Novo OrÃ§amento</h3>
+          <h3>Novo Orçamento</h3>
           <form onSubmit={handleSubmit}>
             <div className="form-grid-2">
               <div className="form-group">
@@ -3286,20 +3286,20 @@ function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDele
                   onChange={e => setForm({ ...form, limit_value: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>PerÃ­odo</label>
+                <label>Período</label>
                 <select value={form.period} onChange={e => setForm({ ...form, period: e.target.value })}>
                   {periodos.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
             </div>
-            <button type="submit" className="submit-btn">âœ… Adicionar</button>
+            <button type="submit" className="submit-btn">✅ Adicionar</button>
           </form>
         </div>
       )}
 
       <div className="budget-list">
         {budgets.length === 0 ? (
-          <p className="empty-message">Nenhum orÃ§amento cadastrado</p>
+          <p className="empty-message">Nenhum orçamento cadastrado</p>
         ) : (
           budgets.map(b => {
             const spent = getSpent(b.category, b.period);
@@ -3314,8 +3314,8 @@ function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDele
                     <h4>{catMeta?.icon ? `${catMeta.icon} ` : ''}{b.category}</h4>
                     <span className="period-badge">{periodos.find(p => p.value === b.period)?.label}</span>
                   </div>
-                  <button className="edit-btn" onClick={() => { setEditingId(b.id); setEditLimit(b.limit_value); }} title="Editar limite">âœï¸</button>
-                  <button className="delete-btn" onClick={() => onDelete(b.id)}>ðŸ—‘ï¸</button>
+                  <button className="edit-btn" onClick={() => { setEditingId(b.id); setEditLimit(b.limit_value); }} title="Editar limite">✏️</button>
+                  <button className="delete-btn" onClick={() => onDelete(b.id)}>🗑️</button>
                 </div>
                 {editingId === b.id && (
                   <form onSubmit={async e => { e.preventDefault(); const ok = await onUpdate(b.id, { limit_value: parseFloat(editLimit) }); if (ok) setEditingId(null); }}
@@ -3323,8 +3323,8 @@ function Orcamentos({ budgets, transactions, categories, onAdd, onUpdate, onDele
                     <label style={{ fontSize: '13px', color: '#64748b' }}>Novo limite:</label>
                     <input type="number" step="0.01" value={editLimit} onChange={e => setEditLimit(e.target.value)}
                       style={{ width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                    <button type="submit" className="submit-btn" style={{ padding: '4px 12px' }}>ðŸ’¾</button>
-                    <button type="button" className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingId(null)}>âœ•</button>
+                    <button type="submit" className="submit-btn" style={{ padding: '4px 12px' }}>💾</button>
+                    <button type="button" className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingId(null)}>✕</button>
                   </form>
                 )}
                 <div className="budget-amounts">
@@ -3360,7 +3360,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
   const [editingTx, setEditingTx] = useState({});
   const [recalculating, setRecalculating] = useState(null);
 
-  // Saldo calculado pelas transaÃ§Ãµes de cada carteira
+  // Saldo calculado pelas transações de cada carteira
   const calcBalanceFromTx = (walletId) => {
     return transactions
       .filter(t => t.wallet_id && parseInt(t.wallet_id) === walletId)
@@ -3379,17 +3379,17 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
         toast.error('Erro ao recalcular saldo');
       }
     } catch (e) {
-      toast.error('Erro de conexÃ£o ao recalcular');
+      toast.error('Erro de conexão ao recalcular');
     } finally {
       setRecalculating(null);
     }
   };
 
   const tipos = [
-    { value: 'corrente', label: 'ðŸ¦ Conta Corrente' },
-    { value: 'poupanca', label: 'ðŸ’° PoupanÃ§a' },
-    { value: 'investimento', label: 'ðŸ“ˆ Investimento' },
-    { value: 'carteira', label: 'ðŸ‘› Carteira' }
+    { value: 'corrente', label: '🏦 Conta Corrente' },
+    { value: 'poupanca', label: '💰 Poupança' },
+    { value: 'investimento', label: '📈 Investimento' },
+    { value: 'carteira', label: '👛 Carteira' }
   ];
 
   const totalBalance = wallets.reduce((s, w) => s + parseFloat(w.balance || 0), 0);
@@ -3457,7 +3457,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
           <div className="wallet-tx-edit">
             <input
               type="text"
-              placeholder="DescriÃ§Ã£o"
+              placeholder="Descrição"
               value={editingTx.description}
               onChange={e => setEditingTx(p => ({ ...p, description: e.target.value }))}
             />
@@ -3478,8 +3478,8 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
               {catList.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
             </select>
             <div className="wallet-tx-actions">
-              <button className="submit-btn" style={{ padding: '4px 12px' }} onClick={() => handleSaveTx(tx)}>ðŸ’¾ Salvar</button>
-              <button className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingTxId(null)}>âœ•</button>
+              <button className="submit-btn" style={{ padding: '4px 12px' }} onClick={() => handleSaveTx(tx)}>💾 Salvar</button>
+              <button className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingTxId(null)}>✕</button>
             </div>
           </div>
         ) : (
@@ -3493,8 +3493,8 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
               <span className={`wallet-tx-value ${tx.type === 'entrada' ? 'text-success' : 'text-danger'}`}>
                 {tx.type === 'entrada' ? '+' : '-'} R$ {parseFloat(tx.value || 0).toFixed(2)}
               </span>
-              <button className="edit-btn" onClick={() => startEditTx(tx)} title="Editar transaÃ§Ã£o">âœï¸</button>
-              <button className="delete-btn" onClick={() => onDeleteTransaction(tx.id)} title="Excluir transaÃ§Ã£o">ðŸ—‘ï¸</button>
+              <button className="edit-btn" onClick={() => startEditTx(tx)} title="Editar transação">✏️</button>
+              <button className="delete-btn" onClick={() => onDeleteTransaction(tx.id)} title="Excluir transação">🗑️</button>
             </div>
           </>
         )}
@@ -3505,13 +3505,13 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
   return (
     <div className="contas-section">
       <div className="section-header">
-        <h2>ðŸ¦ Contas e Carteiras</h2>
+        <h2>🏦 Contas e Carteiras</h2>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button className="add-user-btn" style={{ background: '#8b5cf6' }} onClick={() => { setShowTransfer(v => !v); setShowForm(false); }}>
-            {showTransfer ? 'âŒ Cancelar' : 'ðŸ”„ Transferir'}
+            {showTransfer ? '❌ Cancelar' : '🔄 Transferir'}
           </button>
           <button className="add-user-btn" onClick={() => { setShowForm(v => !v); setShowTransfer(false); }}>
-            {showForm ? 'âŒ Cancelar' : 'âž• Nova Conta'}
+            {showForm ? '❌ Cancelar' : '➕ Nova Conta'}
           </button>
         </div>
       </div>
@@ -3523,21 +3523,21 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
 
       {showTransfer && (
         <div className="add-user-form">
-          <h3>ðŸ”„ Transferir entre Contas</h3>
+          <h3>🔄 Transferir entre Contas</h3>
           <form onSubmit={handleTransfer}>
             <div className="form-grid-2">
               <div className="form-group">
                 <label>Conta de Origem</label>
                 <select value={transferForm.fromId} onChange={e => setTransferForm({ ...transferForm, fromId: e.target.value })} required>
                   <option value="">Selecione a origem</option>
-                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name} â€” R$ {parseFloat(w.balance).toFixed(2)}</option>)}
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name} — R$ {parseFloat(w.balance).toFixed(2)}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label>Conta de Destino</label>
                 <select value={transferForm.toId} onChange={e => setTransferForm({ ...transferForm, toId: e.target.value })} required>
                   <option value="">Selecione o destino</option>
-                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name} â€” R$ {parseFloat(w.balance).toFixed(2)}</option>)}
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name} — R$ {parseFloat(w.balance).toFixed(2)}</option>)}
                 </select>
               </div>
               <div className="form-group">
@@ -3551,12 +3551,12 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                   onChange={e => setTransferForm({ ...transferForm, date: e.target.value })} required />
               </div>
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label>DescriÃ§Ã£o (opcional)</label>
-                <input type="text" placeholder="Ex: Resgate poupanÃ§a, pagamento..." value={transferForm.description}
+                <label>Descrição (opcional)</label>
+                <input type="text" placeholder="Ex: Resgate poupança, pagamento..." value={transferForm.description}
                   onChange={e => setTransferForm({ ...transferForm, description: e.target.value })} maxLength={100} />
               </div>
             </div>
-            <button type="submit" className="submit-btn" style={{ background: '#8b5cf6' }}>ðŸ”„ Confirmar TransferÃªncia</button>
+            <button type="submit" className="submit-btn" style={{ background: '#8b5cf6' }}>🔄 Confirmar Transferência</button>
           </form>
         </div>
       )}
@@ -3583,7 +3583,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                   onChange={e => setForm({ ...form, balance: e.target.value })} />
               </div>
             </div>
-            <button type="submit" className="submit-btn">âœ… Adicionar</button>
+            <button type="submit" className="submit-btn">✅ Adicionar</button>
           </form>
         </div>
       )}
@@ -3600,7 +3600,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                 onClick={() => handleSelectWallet(w.id)}
               >
                 <div className="wallet-info">
-                  <span className="wallet-icon">{tipos.find(t => t.value === w.type)?.label?.split(' ')[0] || 'ðŸ’³'}</span>
+                  <span className="wallet-icon">{tipos.find(t => t.value === w.type)?.label?.split(' ')[0] || '💳'}</span>
                   <div>
                     <h4>{w.name}</h4>
                     <small>{tipos.find(t => t.value === w.type)?.label?.split(' ').slice(1).join(' ') || w.type}</small>
@@ -3612,8 +3612,8 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                       <input type="number" step="0.01" value={editBalance}
                         onChange={e => setEditBalance(e.target.value)}
                         style={{ width: '100px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                      <button type="submit" className="submit-btn" style={{ padding: '4px 10px' }}>ðŸ’¾</button>
-                      <button type="button" className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingId(null)}>âœ•</button>
+                      <button type="submit" className="submit-btn" style={{ padding: '4px 10px' }}>💾</button>
+                      <button type="button" className="cancel-btn" style={{ padding: '4px 10px' }} onClick={() => setEditingId(null)}>✕</button>
                     </form>
                   ) : (
                     (() => {
@@ -3628,7 +3628,7 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                             </span>
                             {hasDiscrepancy && (
                               <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600 }}>
-                                âš ï¸ calculado: R$ {calcBal.toFixed(2)}
+                                ⚠️ calculado: R$ {calcBal.toFixed(2)}
                               </span>
                             )}
                           </div>
@@ -3638,15 +3638,15 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                               style={{ padding: '4px 10px', fontSize: '12px', background: '#f59e0b' }}
                               onClick={() => handleRecalculate(w.id)}
                               disabled={recalculating === w.id}
-                              title="Corrigir saldo baseado nas transaÃ§Ãµes"
+                              title="Corrigir saldo baseado nas transações"
                             >
-                              {recalculating === w.id ? '...' : 'ðŸ”§ Corrigir'}
+                              {recalculating === w.id ? '...' : '🔧 Corrigir'}
                             </button>
                           )}
-                          <button className="edit-btn" onClick={() => { setEditingId(w.id); setEditBalance(w.balance); }} title="Editar saldo">âœï¸</button>
-                          <button className="delete-btn" onClick={() => onDelete(w.id)} title="Excluir">ðŸ—‘ï¸</button>
-                          <span className="wallet-expand-hint" title={selectedWalletId === w.id ? 'Fechar' : 'Ver transaÃ§Ãµes'}>
-                            {selectedWalletId === w.id ? 'â–²' : 'â–¼'}
+                          <button className="edit-btn" onClick={() => { setEditingId(w.id); setEditBalance(w.balance); }} title="Editar saldo">✏️</button>
+                          <button className="delete-btn" onClick={() => onDelete(w.id)} title="Excluir">🗑️</button>
+                          <span className="wallet-expand-hint" title={selectedWalletId === w.id ? 'Fechar' : 'Ver transações'}>
+                            {selectedWalletId === w.id ? '▲' : '▼'}
                           </span>
                         </>
                       );
@@ -3659,33 +3659,33 @@ function Contas({ wallets, onAdd, onUpdate, onDelete, onTransfer, transactions =
                 <div className="wallet-detail-panel">
                   <div className="wallet-detail-summary">
                     <div className="wallet-detail-stat entrada">
-                      <span>ðŸ’µ Total Entradas</span>
+                      <span>💵 Total Entradas</span>
                       <strong className="text-success">+ R$ {totalEntradas.toFixed(2)}</strong>
-                      <small>{entradas.length} transaÃ§Ã£o(Ãµes)</small>
+                      <small>{entradas.length} transação(ões)</small>
                     </div>
                     <div className="wallet-detail-stat saida">
-                      <span>ðŸ’¸ Total SaÃ­das</span>
+                      <span>💸 Total Saídas</span>
                       <strong className="text-danger">- R$ {totalSaidas.toFixed(2)}</strong>
-                      <small>{saidas.length} transaÃ§Ã£o(Ãµes)</small>
+                      <small>{saidas.length} transação(ões)</small>
                     </div>
                   </div>
 
                   {walletTransactions.length === 0 ? (
                     <p className="empty-message" style={{ padding: '16px', textAlign: 'center' }}>
-                      Nenhuma transaÃ§Ã£o vinculada a esta conta
+                      Nenhuma transação vinculada a esta conta
                     </p>
                   ) : (
                     <div className="wallet-tx-columns">
                       <div className="wallet-tx-group">
-                        <h4 className="wallet-tx-group-title entrada">ðŸ’µ Entradas</h4>
+                        <h4 className="wallet-tx-group-title entrada">💵 Entradas</h4>
                         {entradas.length === 0
                           ? <p className="wallet-tx-empty">Sem entradas</p>
                           : entradas.map(renderTxRow)}
                       </div>
                       <div className="wallet-tx-group">
-                        <h4 className="wallet-tx-group-title saida">ðŸ’¸ SaÃ­das</h4>
+                        <h4 className="wallet-tx-group-title saida">💸 Saídas</h4>
                         {saidas.length === 0
-                          ? <p className="wallet-tx-empty">Sem saÃ­das</p>
+                          ? <p className="wallet-tx-empty">Sem saídas</p>
                           : saidas.map(renderTxRow)}
                       </div>
                     </div>
@@ -3707,7 +3707,7 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
   const [contributionId, setContributionId] = useState(null);
   const [contribution, setContribution] = useState('');
 
-  const categorias = ['Viagem', 'Reserva de EmergÃªncia', 'ImÃ³vel', 'VeÃ­culo', 'EducaÃ§Ã£o', 'Outros'];
+  const categorias = ['Viagem', 'Reserva de Emergência', 'Imóvel', 'Veículo', 'Educação', 'Outros'];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -3728,9 +3728,9 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
   return (
     <div className="metas-section">
       <div className="section-header">
-        <h2>ðŸŽ¯ Metas Financeiras</h2>
+        <h2>🎯 Metas Financeiras</h2>
         <button className="add-user-btn" onClick={() => setShowForm(v => !v)}>
-          {showForm ? 'âŒ Cancelar' : 'âž• Nova Meta'}
+          {showForm ? '❌ Cancelar' : '➕ Nova Meta'}
         </button>
       </div>
 
@@ -3767,7 +3767,7 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
                 </select>
               </div>
             </div>
-            <button type="submit" className="submit-btn">âœ… Criar Meta</button>
+            <button type="submit" className="submit-btn">✅ Criar Meta</button>
           </form>
         </div>
       )}
@@ -3785,11 +3785,11 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
               <div key={g.id} className={`goal-card ${completed ? 'completed' : ''}`}>
                 <div className="goal-header">
                   <div>
-                    <h4>{completed ? 'âœ… ' : ''}{g.name}</h4>
+                    <h4>{completed ? '✅ ' : ''}{g.name}</h4>
                     {g.category && <span className="period-badge">{g.category}</span>}
-                    {g.deadline && <small> â€¢ Prazo: {new Date(g.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}</small>}
+                    {g.deadline && <small> • Prazo: {new Date(g.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}</small>}
                   </div>
-                  <button className="delete-btn" onClick={() => onDelete(g.id)}>ðŸ—‘ï¸</button>
+                  <button className="delete-btn" onClick={() => onDelete(g.id)}>🗑️</button>
                 </div>
                 <div className="goal-amounts">
                   <span>R$ {current.toFixed(2)} / R$ {target.toFixed(2)}</span>
@@ -3802,15 +3802,15 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
                   <div className="contribution-area">
                     {contributionId === g.id ? (
                       <form onSubmit={e => handleContribution(e, g)} style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                        <input type="number" step="0.01" placeholder="Valor contribuiÃ§Ã£o" value={contribution}
+                        <input type="number" step="0.01" placeholder="Valor contribuição" value={contribution}
                           onChange={e => setContribution(e.target.value)}
                           style={{ flex: 1, padding: '5px 10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                        <button type="submit" className="submit-btn" style={{ padding: '5px 12px' }}>âœ…</button>
-                        <button type="button" className="cancel-btn" style={{ padding: '5px 12px' }} onClick={() => setContributionId(null)}>âœ•</button>
+                        <button type="submit" className="submit-btn" style={{ padding: '5px 12px' }}>✅</button>
+                        <button type="button" className="cancel-btn" style={{ padding: '5px 12px' }} onClick={() => setContributionId(null)}>✕</button>
                       </form>
                     ) : (
                       <button className="pay-btn" style={{ marginTop: '8px' }} onClick={() => { setContributionId(g.id); setContribution(''); }}>
-                        âž• Adicionar ContribuiÃ§Ã£o
+                        ➕ Adicionar Contribuição
                       </button>
                     )}
                   </div>
@@ -3824,12 +3824,12 @@ function Metas({ goals, onAdd, onUpdate, onDelete }) {
   );
 }
 
-// FormulÃ¡rio de lanÃ§amento otimizado
-// AvanÃ§a a data base de uma parcela em N meses
+// Formulário de lançamento otimizado
+// Avança a data base de uma parcela em N meses
 const addMonths = (dateStr, months) => {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dt = new Date(y, m - 1 + months, d);
-  // Se o dia "transbordou" (ex: 31 fev), usar Ãºltimo dia do mÃªs
+  // Se o dia "transbordou" (ex: 31 fev), usar último dia do mês
   const maxDay = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
   dt.setDate(Math.min(d, maxDay));
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
@@ -3846,7 +3846,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
   });
   const [installment, setInstallment] = useState({ enabled: false, count: 2 });
 
-  // Usar categorias dinÃ¢micas
+  // Usar categorias dinâmicas
   const availableCategories = useMemo(() =>
     categories?.[type] || [],
     [categories, type]
@@ -3877,11 +3877,11 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
     e.preventDefault();
 
     if (!isApiAvailable) {
-      toast.error('ConexÃ£o com servidor necessÃ¡ria para adicionar transaÃ§Ãµes!');
+      toast.error('Conexão com servidor necessária para adicionar transações!');
       return;
     }
     if (!form.description || !form.value || !form.category) {
-      toast.error('Preencha todos os campos obrigatÃ³rios!');
+      toast.error('Preencha todos os campos obrigatórios!');
       return;
     }
     if (parseFloat(form.value) <= 0) {
@@ -3892,7 +3892,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
     if (installment.enabled) {
       // Modo parcelamento
       if (instCount < 2 || instCount > 48) {
-        toast.error('NÃºmero de parcelas deve ser entre 2 e 48!');
+        toast.error('Número de parcelas deve ser entre 2 e 48!');
         return;
       }
       const installment_ref = `inst_${Date.now()}`;
@@ -3935,18 +3935,18 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
 
       {!isApiAvailable && (
         <div className="offline-warning">
-          <p>âš ï¸ ConexÃ£o com servidor necessÃ¡ria para adicionar transaÃ§Ãµes</p>
+          <p>⚠️ Conexão com servidor necessária para adicionar transações</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>DescriÃ§Ã£o:</label>
+          <label>Descrição:</label>
           <input
             type="text"
             value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })}
-            placeholder="Ex: SalÃ¡rio, Supermercado..."
+            placeholder="Ex: Salário, Supermercado..."
             disabled={!isApiAvailable}
             required
           />
@@ -3983,7 +3983,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
         </div>
 
         <div className="form-group">
-          <label>{installment.enabled ? 'Data da 1Âª Parcela:' : 'Data:'}</label>
+          <label>{installment.enabled ? 'Data da 1ª Parcela:' : 'Data:'}</label>
           <input
             type="date"
             value={form.date}
@@ -4004,14 +4004,14 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
               <option value="">Sem conta vinculada</option>
               {wallets.map(w => (
                 <option key={w.id} value={w.id}>
-                  {w.name} â€” R$ {parseFloat(w.balance || 0).toFixed(2)}
+                  {w.name} — R$ {parseFloat(w.balance || 0).toFixed(2)}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Toggle de parcelamento â€” sÃ³ faz sentido para despesas, mas disponÃ­vel para ambos */}
+        {/* Toggle de parcelamento — só faz sentido para despesas, mas disponível para ambos */}
         <div className="form-group installment-toggle">
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
             <input
@@ -4021,14 +4021,14 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
               disabled={!isApiAvailable}
               style={{ width: '18px', height: '18px', cursor: 'pointer' }}
             />
-            <span>ðŸ’³ Parcelar</span>
+            <span>💳 Parcelar</span>
           </label>
         </div>
 
         {installment.enabled && (
           <div className="installment-section">
             <div className="form-group">
-              <label>NÃºmero de Parcelas:</label>
+              <label>Número de Parcelas:</label>
               <input
                 type="number"
                 min="2"
@@ -4042,7 +4042,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
             {instValue > 0 && (
               <div className="installment-preview">
                 <div className="installment-summary">
-                  <span>ðŸ’³ {instCount}x de <strong>R$ {instValue.toFixed(2)}</strong></span>
+                  <span>💳 {instCount}x de <strong>R$ {instValue.toFixed(2)}</strong></span>
                   <span className="installment-total">Total: R$ {totalValue.toFixed(2)}</span>
                 </div>
                 {instPreview.length > 0 && (
@@ -4051,7 +4051,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
                     <div className="installment-list">
                       {instPreview.map(p => (
                         <div key={p.num} className="installment-item">
-                          <span className="inst-num">{p.num}Âª parcela</span>
+                          <span className="inst-num">{p.num}ª parcela</span>
                           <span className="inst-date">{new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                           <span className="inst-value">R$ {p.value.toFixed(2)}</span>
                         </div>
@@ -4072,8 +4072,8 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
           {!isApiAvailable
             ? 'Servidor Offline'
             : installment.enabled
-              ? `ðŸ’³ LanÃ§ar ${instCount}x de R$ ${instValue.toFixed(2)}`
-              : `LanÃ§ar ${type === 'entrada' ? 'Entrada' : 'Despesa'}`
+              ? `💳 Lançar ${instCount}x de R$ ${instValue.toFixed(2)}`
+              : `Lançar ${type === 'entrada' ? 'Entrada' : 'Despesa'}`
           }
         </button>
       </form>
@@ -4081,7 +4081,7 @@ const LancamentoForm = React.memo(({ type, onAdd, onAddBatch, title, categories,
   );
 });
 
-// RelatÃ³rios mensais
+// Relatórios mensais
 function Relatorios({ transactions, loadingExport, setLoadingExport, categories, fmtCurrency }) {
   const allCatsFlat = useMemo(() =>
     [...(categories?.entrada || []), ...(categories?.despesa || [])],
@@ -4089,11 +4089,11 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
   );
   const resolveCatName = (id) => {
     if (!id) return id;
-    if (id === 'transferencia') return 'TransferÃªncia';
+    if (id === 'transferencia') return 'Transferência';
     const found = allCatsFlat.find(c => c.id === id);
     return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
   };
-  // VersÃ£o sem emoji para PDFs (jsPDF nÃ£o suporta unicode emoji)
+  // Versão sem emoji para PDFs (jsPDF não suporta unicode emoji)
   const resolveCatNamePdf = (id) => {
     if (!id) return id;
     if (id === 'transferencia') return 'Transferencia';
@@ -4146,13 +4146,13 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
     .slice(0, 8)
     .map(([name, value]) => ({ name, value }));
 
-  // FunÃ§Ã£o para exportar para Excel
+  // Função para exportar para Excel
   const exportToExcel = async () => {
     setLoadingExport(true);
     try {
       const workbook = XLSX.utils.book_new();
 
-      // Aba 1: Resumo do MÃªs
+      // Aba 1: Resumo do Mês
       const resumoData = [
         ['Resumo Financeiro', selectedMonth],
         [''],
@@ -4164,9 +4164,9 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
       const resumoSheet = XLSX.utils.aoa_to_sheet(resumoData);
       XLSX.utils.book_append_sheet(workbook, resumoSheet, 'Resumo');
 
-      // Aba 2: TransaÃ§Ãµes Detalhadas
+      // Aba 2: Transações Detalhadas
       const transacoesData = [
-        ['Data', 'DescriÃ§Ã£o', 'Categoria', 'Tipo', 'Valor (R$)']
+        ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']
       ];
       monthlyData.forEach(t => {
         transacoesData.push([
@@ -4178,7 +4178,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
         ]);
       });
       const transacoesSheet = XLSX.utils.aoa_to_sheet(transacoesData);
-      XLSX.utils.book_append_sheet(workbook, transacoesSheet, 'TransaÃ§Ãµes');
+      XLSX.utils.book_append_sheet(workbook, transacoesSheet, 'Transações');
 
       // Aba 3: Gastos por Categoria
       const categoriasData = [
@@ -4198,16 +4198,16 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
       const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `relatorio-financeiro-${selectedMonth}.xlsx`);
-      toast.success('RelatÃ³rio Excel exportado com sucesso!');
+      toast.success('Relatório Excel exportado com sucesso!');
     } catch (error) {
       console.error('Erro ao exportar Excel:', error);
-      toast.error('Erro ao exportar relatÃ³rio Excel. Tente novamente.');
+      toast.error('Erro ao exportar relatório Excel. Tente novamente.');
     } finally {
       setLoadingExport(false);
     }
   };
 
-  // FunÃ§Ã£o para exportar para PDF
+  // Função para exportar para PDF
   const exportToPDF = async (mode = 'monthly') => {
     setLoadingExport(true);
     try {
@@ -4216,29 +4216,29 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
       if (mode === 'monthly') {
         if (!monthlyData || monthlyData.length === 0) {
-          toast.error('NÃ£o hÃ¡ dados para exportar!');
+          toast.error('Não há dados para exportar!');
           return;
         }
 
-        // CabeÃ§alho
+        // Cabeçalho
         doc.setFontSize(18);
         doc.setTextColor(30, 41, 59);
-        doc.text('RelatÃ³rio Financeiro', pageW / 2, 18, { align: 'center' });
+        doc.text('Relatório Financeiro', pageW / 2, 18, { align: 'center' });
         doc.setFontSize(11);
         doc.setTextColor(100, 116, 139);
-        doc.text(`PerÃ­odo: ${selectedMonth}`, pageW / 2, 26, { align: 'center' });
+        doc.text(`Período: ${selectedMonth}`, pageW / 2, 26, { align: 'center' });
 
         // Resumo
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Resumo do MÃªs', 14, 38);
+        doc.text('Resumo do Mês', 14, 38);
         autoTable(doc, {
           startY: 42,
           head: [['', 'Valor (R$)']],
           body: [
-            ['ðŸ’µ Entradas', `R$ ${totalEntradas.toFixed(2)}`],
-            ['ðŸ’¸ Despesas', `R$ ${totalDespesas.toFixed(2)}`],
-            ['ðŸ’° Saldo', `R$ ${(totalEntradas - totalDespesas).toFixed(2)}`]
+            ['💵 Entradas', `R$ ${totalEntradas.toFixed(2)}`],
+            ['💸 Despesas', `R$ ${totalDespesas.toFixed(2)}`],
+            ['💰 Saldo', `R$ ${(totalEntradas - totalDespesas).toFixed(2)}`]
           ],
           theme: 'grid',
           headStyles: { fillColor: [99, 102, 241] },
@@ -4246,11 +4246,11 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
           margin: { left: 14, right: 14 }
         });
 
-        // Tabela de transaÃ§Ãµes
-        doc.text('TransaÃ§Ãµes do MÃªs', 14, doc.lastAutoTable.finalY + 12);
+        // Tabela de transações
+        doc.text('Transações do Mês', 14, doc.lastAutoTable.finalY + 12);
         autoTable(doc, {
           startY: doc.lastAutoTable.finalY + 16,
-          head: [['Data', 'DescriÃ§Ã£o', 'Categoria', 'Tipo', 'Valor (R$)']],
+          head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']],
           body: monthlyData.map(t => [
             new Date(t.date).toLocaleDateString('pt-BR'),
             t.description,
@@ -4289,17 +4289,17 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
         // Modo anual
         doc.setFontSize(18);
         doc.setTextColor(30, 41, 59);
-        doc.text('RelatÃ³rio Anual', pageW / 2, 18, { align: 'center' });
+        doc.text('Relatório Anual', pageW / 2, 18, { align: 'center' });
         doc.setFontSize(11);
         doc.setTextColor(100, 116, 139);
         doc.text(`Ano: ${selectedYear}`, pageW / 2, 26, { align: 'center' });
 
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text(`Resumo â€” ${selectedYear}`, 14, 38);
+        doc.text(`Resumo — ${selectedYear}`, 14, 38);
         autoTable(doc, {
           startY: 42,
-          head: [['MÃªs', 'Entradas (R$)', 'Despesas (R$)', 'Saldo (R$)']],
+          head: [['Mês', 'Entradas (R$)', 'Despesas (R$)', 'Saldo (R$)']],
           body: [
             ...annualData.map(r => [
               r.mes,
@@ -4327,26 +4327,26 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
     }
   };
 
-  // FunÃ§Ã£o para exportar para CSV
+  // Função para exportar para CSV
   const exportToCSV = async () => {
-    // ValidaÃ§Ã£o dos dados antes de exportar
+    // Validação dos dados antes de exportar
     if (!monthlyData || monthlyData.length === 0) {
-      toast.error('NÃ£o hÃ¡ dados para exportar!');
+      toast.error('Não há dados para exportar!');
       return;
     }
 
     if (!selectedMonth || !ValidationUtils.isNotEmpty(selectedMonth)) {
-      toast.error('MÃªs selecionado invÃ¡lido!');
+      toast.error('Mês selecionado inválido!');
       return;
     }
 
     setLoadingExport(true);
     try {
       const csvData = [
-        ['Data', 'DescriÃ§Ã£o', 'Categoria', 'Tipo', 'Valor (R$)']
+        ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']
       ];
 
-      // Validar e sanitizar cada transaÃ§Ã£o antes de exportar
+      // Validar e sanitizar cada transação antes de exportar
       monthlyData.forEach(t => {
         if (t && ValidationUtils.isValidDate(t.date) && ValidationUtils.isNotEmpty(t.description)) {
           csvData.push([
@@ -4360,7 +4360,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
       });
 
       if (csvData.length <= 1) {
-        toast.error('Nenhum dado vÃ¡lido encontrado para exportar!');
+        toast.error('Nenhum dado válido encontrado para exportar!');
         return;
       }
 
@@ -4371,9 +4371,9 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
       const fileName = `transacoes-${ValidationUtils.sanitizeText(selectedMonth)}.csv`;
       saveAs(blob, fileName);
 
-      toast.success(`RelatÃ³rio CSV exportado com sucesso! ${csvData.length - 1} transaÃ§Ãµes exportadas.`);
+      toast.success(`Relatório CSV exportado com sucesso! ${csvData.length - 1} transações exportadas.`);
     } catch (error) {
-      ErrorHandler.handleApiError(error, 'exportar relatÃ³rio CSV');
+      ErrorHandler.handleApiError(error, 'exportar relatório CSV');
     } finally {
       setLoadingExport(false);
     }
@@ -4381,24 +4381,24 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
   return (
     <div className="relatorios">
-      <h2>ðŸ“ˆ RelatÃ³rios Financeiros</h2>
+      <h2>📈 Relatórios Financeiros</h2>
 
       {/* Toggle modo mensal / anual */}
       <div className="report-mode-toggle">
         <button
           className={`mode-btn ${reportMode === 'monthly' ? 'active' : ''}`}
           onClick={() => setReportMode('monthly')}
-        >ðŸ“… Mensal</button>
+        >📅 Mensal</button>
         <button
           className={`mode-btn ${reportMode === 'annual' ? 'active' : ''}`}
           onClick={() => setReportMode('annual')}
-        >ðŸ“† Anual</button>
+        >📆 Anual</button>
       </div>
 
       {reportMode === 'monthly' ? (
         <>
           <div className="month-selector">
-            <label>Selecionar MÃªs:</label>
+            <label>Selecionar Mês:</label>
             <input
               type="month"
               value={selectedMonth}
@@ -4408,30 +4408,30 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
           <div className="export-buttons">
             <ButtonSpinner onClick={exportToExcel} className="export-btn excel" loading={loadingExport}>
-              ðŸ“Š Excel
+              📊 Excel
             </ButtonSpinner>
             <ButtonSpinner onClick={exportToCSV} className="export-btn csv" loading={loadingExport}>
-              ðŸ“„ CSV
+              📄 CSV
             </ButtonSpinner>
             <ButtonSpinner onClick={() => exportToPDF('monthly')} className="export-btn pdf" loading={loadingExport}>
-              ðŸ–¨ï¸ PDF
+              🖨️ PDF
             </ButtonSpinner>
           </div>
 
           <div className="report-summary">
             <div className="summary-card">
-              <h3>Resumo do MÃªs</h3>
-              <p>ðŸ’µ Entradas: {fmt(totalEntradas)}</p>
-              <p>ðŸ’¸ Despesas: {fmt(totalDespesas)}</p>
+              <h3>Resumo do Mês</h3>
+              <p>💵 Entradas: {fmt(totalEntradas)}</p>
+              <p>💸 Despesas: {fmt(totalDespesas)}</p>
               <p className={totalEntradas - totalDespesas >= 0 ? 'positive' : 'negative'}>
-                ðŸ’° Saldo: {fmt(totalEntradas - totalDespesas)}
+                💰 Saldo: {fmt(totalEntradas - totalDespesas)}
               </p>
             </div>
           </div>
 
           {reportPieData.length > 0 && (
             <div className="report-pie-section">
-              <h3>🥧 Distribuição de Despesas</h3>
+              <h3>�� Distribui��o de Despesas</h3>
               <div className="report-pie-wrapper">
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
@@ -4465,9 +4465,9 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
           )}
 
           <div className="categories-report">
-            <h3>ðŸ“Š Gastos por Categoria</h3>
+            <h3>📊 Gastos por Categoria</h3>
             {Object.keys(categoriesData).length === 0 ? (
-              <p className="empty-message">Nenhuma despesa neste mÃªs</p>
+              <p className="empty-message">Nenhuma despesa neste mês</p>
             ) : (
               Object.entries(categoriesData)
                 .sort((a, b) => b[1] - a[1])
@@ -4500,18 +4500,18 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
           <div className="report-summary">
             <div className="summary-card">
-              <h3>Resumo Anual â€” {selectedYear}</h3>
-              <p>ðŸ’µ Entradas: {fmt(annualTotals.entradas)}</p>
-              <p>ðŸ’¸ Despesas: {fmt(annualTotals.despesas)}</p>
+              <h3>Resumo Anual — {selectedYear}</h3>
+              <p>💵 Entradas: {fmt(annualTotals.entradas)}</p>
+              <p>💸 Despesas: {fmt(annualTotals.despesas)}</p>
               <p className={annualTotals.saldo >= 0 ? 'positive' : 'negative'}>
-                ðŸ’° Saldo: {fmt(annualTotals.saldo)}
+                💰 Saldo: {fmt(annualTotals.saldo)}
               </p>
             </div>
           </div>
 
           <div className="report-annual-charts">
             <div className="report-chart-card">
-              <h3>📊 Entradas vs Despesas por Mês</h3>
+              <h3>�� Entradas vs Despesas por M�s</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
@@ -4525,7 +4525,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
               </ResponsiveContainer>
             </div>
             <div className="report-chart-card">
-              <h3>📈 Saldo Mensal</h3>
+              <h3>�� Saldo Mensal</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
@@ -4540,7 +4540,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
           <div className="export-buttons">
             <ButtonSpinner onClick={() => exportToPDF('annual')} className="export-btn pdf" loading={loadingExport}>
-              ðŸ–¨ï¸ Exportar PDF
+              🖨️ Exportar PDF
             </ButtonSpinner>
           </div>
 
@@ -4548,7 +4548,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
             <table className="annual-table">
               <thead>
                 <tr>
-                  <th>MÃªs</th>
+                  <th>Mês</th>
                   <th>Entradas</th>
                   <th>Despesas</th>
                   <th>Saldo</th>
@@ -4580,7 +4580,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
   );
 }
 
-// HistÃ³rico de transaÃ§Ãµes otimizado
+// Histórico de transações otimizado
 const HISTORICO_PAGE_SIZE = 30;
 
 const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable, categories, wallets = [] }) => {
@@ -4600,13 +4600,13 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     setVisibleCount(HISTORICO_PAGE_SIZE);
   }, [filter, monthFilter, debouncedSearchTerm, categoryFilter]);
 
-  // Categorias disponÃ­veis para o tipo selecionado
+  // Categorias disponíveis para o tipo selecionado
   const editCategoryOptions = useMemo(() =>
     (categories?.[editForm.type] || []),
     [categories, editForm.type]
   );
 
-  // Todas as categorias Ãºnicas presentes nas transaÃ§Ãµes (para o filtro)
+  // Todas as categorias únicas presentes nas transações (para o filtro)
   const allCategoryOptions = useMemo(() => {
     const allCats = [...(categories?.entrada || []), ...(categories?.despesa || [])];
     const ids = [...new Set(transactions.map(t => t.category))];
@@ -4618,11 +4618,11 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
 
   const getCatLabel = (id) => {
     if (!id) return id;
-    if (id === 'transferencia') return 'TransferÃªncia';
+    if (id === 'transferencia') return 'Transferência';
     const found = allCategoryOptions.find(c => c.id === id);
     return found ? `${found.icon ? found.icon + ' ' : ''}${found.name}` : id;
   };
-  // VersÃ£o sem emoji para PDFs (jsPDF nÃ£o suporta unicode emoji)
+  // Versão sem emoji para PDFs (jsPDF não suporta unicode emoji)
   const getCatLabelPdf = (id) => {
     if (!id) return id;
     if (id === 'transferencia') return 'Transferencia';
@@ -4662,7 +4662,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     if (success) cancelEdit();
   };
 
-  // Otimizar filtros com useMemo incluindo busca e validaÃ§Ã£o de usuÃ¡rio
+  // Otimizar filtros com useMemo incluindo busca e validação de usuário
   const filteredTransactions = useMemo(() =>
     transactions.filter(t => {
       const typeMatch = filter === 'all'
@@ -4679,18 +4679,18 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
     [transactions, filter, monthFilter, debouncedSearchTerm, categoryFilter]
   );
 
-  // FunÃ§Ã£o para exportar histÃ³rico para Excel
+  // Função para exportar histórico para Excel
   const exportHistoricoToExcel = () => {
     if (!filteredTransactions.length) {
-      toast.error('NÃ£o hÃ¡ transaÃ§Ãµes para exportar!');
+      toast.error('Não há transações para exportar!');
       return;
     }
     try {
       const workbook = XLSX.utils.book_new();
       const historicoData = [
-        ['HistÃ³rico de TransaÃ§Ãµes'],
+        ['Histórico de Transações'],
         [''],
-        ['Data', 'DescriÃ§Ã£o', 'Categoria', 'Tipo', 'Valor (R$)']
+        ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']
       ];
       filteredTransactions.forEach(t => {
         historicoData.push([
@@ -4702,37 +4702,37 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         ]);
       });
       const sheet = XLSX.utils.aoa_to_sheet(historicoData);
-      XLSX.utils.book_append_sheet(workbook, sheet, 'HistÃ³rico');
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Histórico');
       const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const filterText = filter === 'all' ? 'todas' : filter;
       const monthText = monthFilter ? `-${monthFilter}` : '';
       saveAs(blob, `historico-${filterText}${monthText}.xlsx`);
-      toast.success(`Excel exportado! ${filteredTransactions.length} transaÃ§Ãµes.`);
+      toast.success(`Excel exportado! ${filteredTransactions.length} transações.`);
     } catch (error) {
       console.error('Erro ao exportar Excel:', error);
       toast.error('Erro ao exportar Excel. Tente novamente.');
     }
   };
 
-  // FunÃ§Ã£o para exportar histÃ³rico para PDF
+  // Função para exportar histórico para PDF
   const exportHistoricoPDF = () => {
     if (!filteredTransactions.length) {
-      toast.error('NÃ£o hÃ¡ transaÃ§Ãµes para exportar!');
+      toast.error('Não há transações para exportar!');
       return;
     }
     try {
       const doc = new jsPDF();
       const pageW = doc.internal.pageSize.getWidth();
 
-      // CabeÃ§alho
+      // Cabeçalho
       doc.setFontSize(18);
       doc.setTextColor(30, 41, 59);
-      doc.text('HistÃ³rico de TransaÃ§Ãµes', pageW / 2, 18, { align: 'center' });
+      doc.text('Histórico de Transações', pageW / 2, 18, { align: 'center' });
 
-      // SubtÃ­tulo com filtros aplicados
+      // Subtítulo com filtros aplicados
       const subtitles = [];
-      if (monthFilter) subtitles.push(`MÃªs: ${monthFilter}`);
+      if (monthFilter) subtitles.push(`Mês: ${monthFilter}`);
       if (filter !== 'all') subtitles.push(`Tipo: ${filter}`);
       if (debouncedSearchTerm) subtitles.push(`Busca: "${debouncedSearchTerm}"`);
       if (subtitles.length > 0) {
@@ -4743,7 +4743,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
 
       autoTable(doc, {
         startY: subtitles.length > 0 ? 32 : 26,
-        head: [['Data', 'DescriÃ§Ã£o', 'Categoria', 'Tipo', 'Valor (R$)']],
+        head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor (R$)']],
         body: filteredTransactions.map(t => [
           new Date(t.date).toLocaleDateString('pt-BR'),
           t.description,
@@ -4763,7 +4763,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         }
       });
 
-      // RodapÃ© com totais
+      // Rodapé com totais
       const totalEnt = filteredTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
       const totalDesp = filteredTransactions.filter(t => t.type === 'despesa').reduce((s, t) => s + parseFloat(t.value), 0);
       autoTable(doc, {
@@ -4781,7 +4781,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
       const filterText = filter === 'all' ? 'todas' : filter;
       const monthText = monthFilter ? `-${monthFilter}` : '';
       doc.save(`historico-${filterText}${monthText}.pdf`);
-      toast.success(`PDF exportado! ${filteredTransactions.length} transaÃ§Ãµes.`);
+      toast.success(`PDF exportado! ${filteredTransactions.length} transações.`);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
       toast.error('Erro ao exportar PDF. Tente novamente.');
@@ -4790,22 +4790,22 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
 
   return (
     <div className="historico">
-      <h2>ðŸ“‹ HistÃ³rico de TransaÃ§Ãµes</h2>
+      <h2>📋 Histórico de Transações</h2>
 
       <div className="filters">
         <select value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="all">Todas</option>
           <option value="entrada">Entradas</option>
           <option value="despesa">Despesas</option>
-          <option value="transferencia">ðŸ”„ TransferÃªncias</option>
-          <option value="parcelas">ðŸ’³ Parcelas</option>
+          <option value="transferencia">🔄 Transferências</option>
+          <option value="parcelas">💳 Parcelas</option>
         </select>
 
         <input
           type="month"
           value={monthFilter}
           onChange={e => setMonthFilter(e.target.value)}
-          placeholder="Filtrar por mÃªs"
+          placeholder="Filtrar por mês"
         />
 
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
@@ -4819,21 +4819,21 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
           type="text"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          placeholder="ðŸ” Buscar descriÃ§Ã£o ou categoria..."
+          placeholder="🔍 Buscar descrição ou categoria..."
           className="search-input"
         />
 
         <button onClick={exportHistoricoToExcel} className="export-btn excel">
-          ðŸ“Š Excel
+          📊 Excel
         </button>
         <button onClick={exportHistoricoPDF} className="export-btn pdf">
-          ðŸ–¨ï¸ PDF
+          🖨️ PDF
         </button>
       </div>
 
       {/* Resumo de resultados */}
       <div className="historico-summary">
-        <span>Exibindo <strong>{Math.min(visibleCount, filteredTransactions.length)}</strong> de <strong>{filteredTransactions.length}</strong> transaÃ§Ãµes</span>
+        <span>Exibindo <strong>{Math.min(visibleCount, filteredTransactions.length)}</strong> de <strong>{filteredTransactions.length}</strong> transações</span>
       </div>
 
       <div className="transactions-list">
@@ -4854,7 +4854,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
                     type="text"
                     value={editForm.description}
                     onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                    placeholder="DescriÃ§Ã£o"
+                    placeholder="Descrição"
                     required
                   />
                   <select
@@ -4894,25 +4894,25 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
                   )}
                 </div>
                 <div className="edit-form-actions">
-                  <button type="submit" className="submit-btn">ðŸ’¾ Salvar</button>
-                  <button type="button" className="cancel-btn" onClick={cancelEdit}>âŒ Cancelar</button>
+                  <button type="submit" className="submit-btn">💾 Salvar</button>
+                  <button type="button" className="cancel-btn" onClick={cancelEdit}>❌ Cancelar</button>
                 </div>
               </form>
             ) : (
               <>
                 <div className="transaction-info">
                   <h4>
-                    {transaction.category === 'transferencia' && <span title="TransferÃªncia entre contas" style={{ marginRight: '6px' }}>ðŸ”„</span>}
-                    {transaction.installment_ref && <span className="installment-badge" title={`Parcela ${transaction.installment_num} de ${transaction.installment_total}`}>ðŸ’³ {transaction.installment_num}/{transaction.installment_total}</span>}
+                    {transaction.category === 'transferencia' && <span title="Transferência entre contas" style={{ marginRight: '6px' }}>🔄</span>}
+                    {transaction.installment_ref && <span className="installment-badge" title={`Parcela ${transaction.installment_num} de ${transaction.installment_total}`}>💳 {transaction.installment_num}/{transaction.installment_total}</span>}
                     {transaction.description}
                   </h4>
                   <p>
                     {transaction.category === 'transferencia'
-                      ? <span style={{ color: '#8b5cf6', fontWeight: 600 }}>TransferÃªncia</span>
+                      ? <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Transferência</span>
                       : getCatLabel(transaction.category)}
                     {transaction.wallet_id && wallets.length > 0 && (() => {
                       const w = wallets.find(ww => ww.id === parseInt(transaction.wallet_id));
-                      return w ? <span className="tx-wallet-badge"> â€¢ ðŸ¦ {w.name}</span> : null;
+                      return w ? <span className="tx-wallet-badge"> • 🏦 {w.name}</span> : null;
                     })()}
                   </p>
                   <span className="date">{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
@@ -4926,15 +4926,15 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
                       <button
                         onClick={() => startEdit(transaction)}
                         className="edit-btn"
-                        title="Editar transaÃ§Ã£o"
+                        title="Editar transação"
                       >
-                        âœï¸
+                        ✏️
                       </button>
                     )}
                     <button
                       onClick={() => {
                         if (!isApiAvailable) {
-                          alert('ConexÃ£o com servidor necessÃ¡ria para excluir transaÃ§Ãµes.');
+                          alert('Conexão com servidor necessária para excluir transações.');
                           return;
                         }
                         if (window.confirm(`Deseja realmente excluir "${transaction.description}"?`)) {
@@ -4945,7 +4945,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
                       disabled={!isApiAvailable}
                       title={!isApiAvailable ? 'Servidor offline' : `Excluir "${transaction.description}"`}
                     >
-                      {!isApiAvailable ? 'ðŸš«' : 'ðŸ—‘ï¸'}
+                      {!isApiAvailable ? '🚫' : '🗑️'}
                     </button>
                   </div>
                 </div>
@@ -4955,14 +4955,14 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
         ))}
       </div>
 
-      {/* BotÃ£o Carregar mais */}
+      {/* Botão Carregar mais */}
       {visibleCount < filteredTransactions.length && (
         <div className="load-more-container">
           <button
             className="load-more-btn"
             onClick={() => setVisibleCount(v => v + HISTORICO_PAGE_SIZE)}
           >
-            â–¼ Carregar mais ({filteredTransactions.length - visibleCount} restantes)
+            ▼ Carregar mais ({filteredTransactions.length - visibleCount} restantes)
           </button>
         </div>
       )}
@@ -4970,7 +4970,7 @@ const Historico = React.memo(({ transactions, onDelete, onUpdate, isApiAvailable
   );
 });
 
-// â”€â”€â”€ Importar Extrato CSV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Importar Extrato CSV ──────────────────────────────────────────────────
 function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) {
   const [step, setStep] = useState('upload'); // 'upload' | 'map' | 'preview' | 'done'
   const [rawRows, setRawRows] = useState([]); // todos os rows do CSV (sem header)
@@ -4978,7 +4978,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
   const [mapping, setMapping] = useState({ date: '', description: '', value: '', type: '' });
   const [defaultCatDesp, setDefaultCatDesp] = useState('');
   const [defaultCatEnt, setDefaultCatEnt] = useState('');
-  const [preview, setPreview] = useState([]);  // transaÃ§Ãµes parseadas
+  const [preview, setPreview] = useState([]);  // transações parseadas
   const [importing, setImporting] = useState(false);
   const [fileName, setFileName] = useState('');
 
@@ -5000,13 +5000,13 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
   const parseBRValue = (raw) => {
     if (!raw) return NaN;
     let s = String(raw).trim().replace(/\s/g, '');
-    // Remove sÃ­mbolo de moeda
+    // Remove símbolo de moeda
     s = s.replace(/^[R$\s]+/, '').replace(/^-[R$\s]+/, '-');
-    // Se tem vÃ­rgula como decimal e ponto como milhar: 1.234,56
+    // Se tem vírgula como decimal e ponto como milhar: 1.234,56
     if (/\d+\.\d{3},\d+/.test(s) || (/,\d{1,2}$/.test(s) && s.includes('.'))) {
       s = s.replace(/\./g, '').replace(',', '.');
     } else if (/,\d+$/.test(s)) {
-      // vÃ­rgula como decimal, sem ponto milhar
+      // vírgula como decimal, sem ponto milhar
       s = s.replace(',', '.');
     }
     return parseFloat(s);
@@ -5038,7 +5038,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       // Remove BOM se existir
       const clean = text.replace(/^\uFEFF/, '');
       const lines = clean.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { toast.error('Arquivo CSV deve ter ao menos 2 linhas (cabeÃ§alho + dados).'); return; }
+      if (lines.length < 2) { toast.error('Arquivo CSV deve ter ao menos 2 linhas (cabeçalho + dados).'); return; }
       const delim = detectDelimiter(lines[0]);
       const parseLine = (line) => {
         const result = []; let cur = ''; let inQ = false;
@@ -5062,7 +5062,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       autoMap.description = String(lh.findIndex(h => /descri|hist.rico|memo|narr|title/.test(h)));
       autoMap.value = String(lh.findIndex(h => /valor|value|amount|quantia|cred|deb/.test(h)));
       autoMap.type = String(lh.findIndex(h => /tipo|type/.test(h)));
-      // Se nÃ£o achou coluna de tipo, serÃ¡ detectado pelo sinal do valor
+      // Se não achou coluna de tipo, será detectado pelo sinal do valor
       setMapping({
         date: autoMap.date !== '-1' ? autoMap.date : '',
         description: autoMap.description !== '-1' ? autoMap.description : '',
@@ -5082,7 +5082,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
     const si = parseInt(mapping.description);
     const vi = parseInt(mapping.value);
     const ti = mapping.type !== '' ? parseInt(mapping.type) : -1;
-    if (isNaN(di) || isNaN(si) || isNaN(vi)) { toast.error('Selecione as colunas de Data, DescriÃ§Ã£o e Valor.'); return; }
+    if (isNaN(di) || isNaN(si) || isNaN(vi)) { toast.error('Selecione as colunas de Data, Descrição e Valor.'); return; }
     const parsed = [];
     const errors = [];
     rawRows.forEach((row, idx) => {
@@ -5092,9 +5092,9 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       const rawType = ti >= 0 ? row[ti] || '' : '';
       const date = parseDate(rawDate);
       const val = parseBRValue(rawVal);
-      if (!date) { errors.push(`Linha ${idx + 2}: data invÃ¡lida "${rawDate}"`); return; }
-      if (isNaN(val)) { errors.push(`Linha ${idx + 2}: valor invÃ¡lido "${rawVal}"`); return; }
-      if (!rawDesc.trim()) { errors.push(`Linha ${idx + 2}: descriÃ§Ã£o vazia`); return; }
+      if (!date) { errors.push(`Linha ${idx + 2}: data inválida "${rawDate}"`); return; }
+      if (isNaN(val)) { errors.push(`Linha ${idx + 2}: valor inválido "${rawVal}"`); return; }
+      if (!rawDesc.trim()) { errors.push(`Linha ${idx + 2}: descrição vazia`); return; }
       let type;
       if (rawType) {
         const lt = rawType.toLowerCase();
@@ -5109,14 +5109,14 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       toast.error(`${errors.length} linha(s) com erro. Ex: ${errors[0]}`);
       if (errors.length === rawRows.length) return;
     }
-    if (parsed.length === 0) { toast.error('Nenhuma transaÃ§Ã£o vÃ¡lida encontrada.'); return; }
+    if (parsed.length === 0) { toast.error('Nenhuma transação válida encontrada.'); return; }
     setPreview(parsed);
     setStep('preview');
   };
 
   const handleImport = async () => {
-    if (!isApiAvailable) { toast.error('Servidor offline. NÃ£o Ã© possÃ­vel importar.'); return; }
-    if (!currentUser?.email) { toast.error('UsuÃ¡rio nÃ£o autenticado.'); return; }
+    if (!isApiAvailable) { toast.error('Servidor offline. Não é possível importar.'); return; }
+    if (!currentUser?.email) { toast.error('Usuário não autenticado.'); return; }
     setImporting(true);
     try {
       const res = await fetch(`${config.API_URL}/transactions/import`, {
@@ -5126,11 +5126,11 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
-      toast.success(`âœ… ${data.count} transaÃ§Ã£o(Ãµes) importada(s) com sucesso!`);
+      toast.success(`✅ ${data.count} transação(ões) importada(s) com sucesso!`);
       onImportDone();
       setStep('done');
     } catch (err) {
-      toast.error(`Erro na importaÃ§Ã£o: ${err.message}`);
+      toast.error(`Erro na importação: ${err.message}`);
     } finally {
       setImporting(false);
     }
@@ -5145,21 +5145,21 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
 
   return (
     <div className="importar-csv">
-      <h2>ðŸ“¥ Importar Extrato CSV</h2>
+      <h2>📥 Importar Extrato CSV</h2>
 
       {step === 'upload' && (
         <div className="import-upload-area">
           <div className="import-info">
-            <p>Importe transaÃ§Ãµes a partir de um arquivo <strong>CSV</strong> exportado do seu banco.</p>
+            <p>Importe transações a partir de um arquivo <strong>CSV</strong> exportado do seu banco.</p>
             <ul>
               <li>Formatos de data suportados: <code>DD/MM/AAAA</code>, <code>AAAA-MM-DD</code></li>
               <li>Formatos de valor: <code>1.234,56</code> ou <code>1234.56</code> (negativo = despesa)</li>
-              <li>Delimitadores: vÃ­rgula, ponto-e-vÃ­rgula ou tabulaÃ§Ã£o</li>
-              <li>MÃ¡ximo de 2.000 transaÃ§Ãµes por importaÃ§Ã£o</li>
+              <li>Delimitadores: vírgula, ponto-e-vírgula ou tabulação</li>
+              <li>Máximo de 2.000 transações por importação</li>
             </ul>
           </div>
           <label className="import-file-label">
-            <span>ðŸ“‚ Selecionar arquivo CSV</span>
+            <span>📂 Selecionar arquivo CSV</span>
             <input type="file" accept=".csv,.txt" onChange={handleFile} />
           </label>
         </div>
@@ -5168,33 +5168,33 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
       {step === 'map' && (
         <div className="import-map">
           <div className="import-map-header">
-            <span>ðŸ“„ <strong>{fileName}</strong> â€” {rawRows.length} linhas detectadas</span>
-            <button className="cancel-btn" onClick={reset}>ðŸ”„ Trocar arquivo</button>
+            <span>📄 <strong>{fileName}</strong> — {rawRows.length} linhas detectadas</span>
+            <button className="cancel-btn" onClick={reset}>🔄 Trocar arquivo</button>
           </div>
           <p className="import-map-hint">Selecione qual coluna do CSV corresponde a cada campo:</p>
           <div className="import-map-grid">
             {[
-              { key: 'date', label: 'ðŸ“… Data', required: true },
-              { key: 'description', label: 'ðŸ“ DescriÃ§Ã£o', required: true },
-              { key: 'value', label: 'ðŸ’² Valor', required: true },
-              { key: 'type', label: 'â†•ï¸ Tipo', required: false },
+              { key: 'date', label: '📅 Data', required: true },
+              { key: 'description', label: '📝 Descrição', required: true },
+              { key: 'value', label: '💲 Valor', required: true },
+              { key: 'type', label: '↕️ Tipo', required: false },
             ].map(({ key, label, required }) => (
               <div key={key} className="import-map-field">
                 <label>{label} {required && <span className="required">*</span>}</label>
                 <select value={mapping[key]} onChange={e => setMapping(m => ({ ...m, [key]: e.target.value }))}>
-                  <option value="">{key === 'type' ? 'Auto (pelo sinal do valor)' : 'â€” Selecione â€”'}</option>
+                  <option value="">{key === 'type' ? 'Auto (pelo sinal do valor)' : '— Selecione —'}</option>
                   {colOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             ))}
             <div className="import-map-field">
-              <label>ðŸ·ï¸ Categoria padrÃ£o (Despesas)</label>
+              <label>🏷️ Categoria padrão (Despesas)</label>
               <select value={defaultCatDesp} onChange={e => setDefaultCatDesp(e.target.value)}>
                 {catDesp.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </div>
             <div className="import-map-field">
-              <label>ðŸ·ï¸ Categoria padrÃ£o (Entradas)</label>
+              <label>🏷️ Categoria padrão (Entradas)</label>
               <select value={defaultCatEnt} onChange={e => setDefaultCatEnt(e.target.value)}>
                 {catEnt.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
@@ -5203,7 +5203,7 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
 
           {/* Preview das primeiras 3 linhas do CSV bruto */}
           <div className="import-raw-preview">
-            <p><strong>PrÃ©via do arquivo:</strong></p>
+            <p><strong>Prévia do arquivo:</strong></p>
             <div className="import-table-wrap">
               <table>
                 <thead><tr>{headers.map((h, i) => <th key={i}>{h || `Col ${i + 1}`}</th>)}</tr></thead>
@@ -5215,20 +5215,20 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
               </table>
             </div>
           </div>
-          <button className="submit-btn" onClick={buildPreview}>ðŸ” Visualizar TransaÃ§Ãµes</button>
+          <button className="submit-btn" onClick={buildPreview}>🔍 Visualizar Transações</button>
         </div>
       )}
 
       {step === 'preview' && (
         <div className="import-preview">
           <div className="import-preview-header">
-            <span>âœ… <strong>{preview.length}</strong> transaÃ§Ãµes prontas para importar</span>
-            <button className="cancel-btn" onClick={() => setStep('map')}>â† Voltar ao mapeamento</button>
+            <span>✅ <strong>{preview.length}</strong> transações prontas para importar</span>
+            <button className="cancel-btn" onClick={() => setStep('map')}>← Voltar ao mapeamento</button>
           </div>
           <div className="import-table-wrap">
             <table>
               <thead>
-                <tr><th>Data</th><th>DescriÃ§Ã£o</th><th>Categoria</th><th>Tipo</th><th>Valor</th></tr>
+                <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th></tr>
               </thead>
               <tbody>
                 {preview.slice(0, 50).map((t, i) => (
@@ -5236,17 +5236,17 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
                     <td>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                     <td>{t.description}</td>
                     <td>{t.category}</td>
-                    <td><span className={`type-badge ${t.type}`}>{t.type === 'entrada' ? 'â¬†ï¸ Entrada' : 'â¬‡ï¸ Despesa'}</span></td>
+                    <td><span className={`type-badge ${t.type}`}>{t.type === 'entrada' ? '⬆️ Entrada' : '⬇️ Despesa'}</span></td>
                     <td className={`val ${t.type}`}>{t.type === 'entrada' ? '+' : '-'}R$ {parseFloat(t.value).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {preview.length > 50 && <p className="import-more-hint">â€¦e mais {preview.length - 50} transaÃ§Ãµes nÃ£o exibidas.</p>}
+          {preview.length > 50 && <p className="import-more-hint">…e mais {preview.length - 50} transações não exibidas.</p>}
           <div className="import-actions">
             <button className="submit-btn" onClick={handleImport} disabled={importing}>
-              {importing ? 'â³ Importando...' : `ðŸ“¥ Importar ${preview.length} transaÃ§Ãµes`}
+              {importing ? '⏳ Importando...' : `📥 Importar ${preview.length} transações`}
             </button>
           </div>
         </div>
@@ -5254,10 +5254,10 @@ function ImportarCSV({ categories, currentUser, isApiAvailable, onImportDone }) 
 
       {step === 'done' && (
         <div className="import-done">
-          <div className="import-done-icon">âœ…</div>
-          <h3>ImportaÃ§Ã£o concluÃ­da!</h3>
-          <p>As transaÃ§Ãµes foram adicionadas ao seu histÃ³rico.</p>
-          <button className="submit-btn" onClick={reset}>ðŸ“‚ Importar outro arquivo</button>
+          <div className="import-done-icon">✅</div>
+          <h3>Importação concluída!</h3>
+          <p>As transações foram adicionadas ao seu histórico.</p>
+          <button className="submit-btn" onClick={reset}>📂 Importar outro arquivo</button>
         </div>
       )}
     </div>
