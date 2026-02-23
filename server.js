@@ -68,6 +68,27 @@ const buildErrors = (rules) => rules.filter(([cond]) => cond).map(([, msg]) => m
 const badRequest = (res, errors) =>
   res.status(400).json({ error: errors[0], errors });
 
+// ============ CONFIGURAÇÕES ============
+/** Lê um parâmetro da tabela configuracoes. Retorna o valor ou o default. */
+const getConfig = async (secao, parametro, defaultValue = '') => {
+  try {
+    const row = await dbGet(
+      'SELECT valor FROM configuracoes WHERE secao = ? AND parametro = ?',
+      [secao, parametro]
+    );
+    return (row && row.valor != null) ? row.valor : defaultValue;
+  } catch { return defaultValue; }
+};
+
+/** Grava/atualiza um parâmetro na tabela configuracoes. */
+const setConfig = async (secao, parametro, valor) => {
+  await dbRun(
+    `INSERT INTO configuracoes (secao, parametro, valor) VALUES (?, ?, ?)
+     ON CONFLICT(secao, parametro) DO UPDATE SET valor = excluded.valor`,
+    [secao, parametro, String(valor)]
+  );
+};
+
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -302,6 +323,32 @@ const initializeDatabase = async () => {
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_budgets_userid ON budgets(userId)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_wallets_userid ON wallets(userId)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_goals_userid ON goals(userId)`);
+
+    // Criar tabela de configurações
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS configuracoes (
+        secao TEXT NOT NULL,
+        parametro TEXT NOT NULL,
+        valor TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (secao, parametro)
+      )
+    `);
+
+    // Seed: valores padrão de SMTP (só insere se não existirem)
+    const smtpDefaults = [
+      ['SMTP', 'HOST', 'smtp.gmail.com'],
+      ['SMTP', 'PORT', '587'],
+      ['SMTP', 'SECURE', 'false'],
+      ['SMTP', 'USER', 'jrinfosistemas@gmail.com'],
+      ['SMTP', 'PASS', 'lofn zczm bcld emoc'],
+      ['SMTP', 'FROM', 'jrinfosistemas@gmail.com'],
+    ];
+    for (const [secao, parametro, valor] of smtpDefaults) {
+      await dbRun(
+        `INSERT OR IGNORE INTO configuracoes (secao, parametro, valor) VALUES (?, ?, ?)`,
+        [secao, parametro, valor]
+      );
+    }
 
     console.log('✅ Banco SQLite inicializado com sucesso!');
 
@@ -676,19 +723,27 @@ app.post('/auth/forgot-password', async (req, res) => {
     const expiry = Date.now() + 15 * 60 * 1000;
     passwordResetTokens.set(email.toLowerCase().trim(), { token, expiry });
 
-    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpUser = process.env.SMTP_USER || 'jrinfosistemas@gmail.com';
-    const smtpPass = process.env.SMTP_PASS || 'lofn zczm bcld emoc';
+    const smtpHost = process.env.SMTP_HOST || await getConfig('SMTP', 'HOST', 'smtp.gmail.com');
+    const smtpUser = process.env.SMTP_USER || await getConfig('SMTP', 'USER', '');
+    const smtpPass = process.env.SMTP_PASS || await getConfig('SMTP', 'PASS', '');
+    const smtpPort = process.env.SMTP_PORT || await getConfig('SMTP', 'PORT', '587');
+    const smtpSecure = process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false');
+    const smtpFrom = process.env.SMTP_FROM || await getConfig('SMTP', 'FROM', smtpUser);
+
+    if (!smtpUser || !smtpPass) {
+      console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
+      return res.json({ ok: true, demo: true, token, message: 'SMTP não configurado. Código retornado para demonstração.' });
+    }
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
+      port: parseInt(smtpPort),
+      secure: smtpSecure === 'true',
       auth: { user: smtpUser, pass: smtpPass },
     });
     await transporter.sendMail({
-      from: `"Gestor Financeiro" <${process.env.SMTP_FROM || smtpUser}>`,
+      from: `"Gestor Financeiro" <${smtpFrom}>`,
       to: email,
       subject: '🔑 Código de recuperação de senha — Gestor Financeiro',
       html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`,
@@ -728,6 +783,53 @@ app.post('/auth/reset-password', async (req, res) => {
 
 // ============ ROTAS PROTEGIDAS (requerem JWT) ============
 app.use(authenticateToken);
+
+// ============ ROTAS DE CONFIGURAÇÕES (admin) ============
+/** Lista todas as configurações de uma seção (ou todas). */
+app.get('/admin/config', async (req, res) => {
+  const { secao } = req.query;
+  try {
+    const rows = secao
+      ? await dbAll('SELECT secao, parametro, valor FROM configuracoes WHERE secao = ? ORDER BY secao, parametro', [secao])
+      : await dbAll('SELECT secao, parametro, valor FROM configuracoes ORDER BY secao, parametro');
+    // Oculta senhas da resposta
+    const safe = rows.map(r => ({
+      ...r,
+      valor: r.parametro === 'PASS' ? '••••••••' : r.valor
+    }));
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** Atualiza (ou cria) um parâmetro. */
+app.put('/admin/config', async (req, res) => {
+  const { secao, parametro, valor } = req.body;
+  if (!secao || !parametro || valor == null)
+    return badRequest(res, ['secao, parametro e valor são obrigatórios']);
+  const secaoClean = sanitize(secao, 30).toUpperCase();
+  const paramClean = sanitize(parametro, 30).toUpperCase();
+  try {
+    await setConfig(secaoClean, paramClean, valor);
+    res.json({ ok: true, message: `${secaoClean}.${paramClean} atualizado com sucesso` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** Deleta um parâmetro individual. */
+app.delete('/admin/config', async (req, res) => {
+  const { secao, parametro } = req.body;
+  if (!secao || !parametro)
+    return badRequest(res, ['secao e parametro são obrigatórios']);
+  try {
+    await dbRun('DELETE FROM configuracoes WHERE secao = ? AND parametro = ?', [secao, parametro]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Rotas administrativas
 app.post('/admin/register-user', async (req, res) => {
@@ -1446,18 +1548,25 @@ app.post('/send-email-summary', authenticateToken, async (req, res) => {
   </div>
 </body></html>`;
 
-  // Verificar se nodemailer está disponível + SMTP configurado
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpUser = process.env.SMTP_USER || 'jrinfosistemas@gmail.com';
-  const smtpPass = process.env.SMTP_PASS || 'lofn zczm bcld emoc';
-  const smtpFrom = process.env.SMTP_FROM || smtpUser;
+  // Ler configurações SMTP: env vars têm prioridade; fallback no banco
+  const smtpHost = process.env.SMTP_HOST || await getConfig('SMTP', 'HOST', 'smtp.gmail.com');
+  const smtpUser = process.env.SMTP_USER || await getConfig('SMTP', 'USER', '');
+  const smtpPass = process.env.SMTP_PASS || await getConfig('SMTP', 'PASS', '');
+  const smtpPort = process.env.SMTP_PORT || await getConfig('SMTP', 'PORT', '587');
+  const smtpSecure = process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false');
+  const smtpFrom = process.env.SMTP_FROM || await getConfig('SMTP', 'FROM', smtpUser);
+
+  if (!smtpUser || !smtpPass) {
+    console.log(`📧 [EMAIL DEMO] Para: ${email} | ${notifications.length} notificações — SMTP não configurado.`);
+    return res.json({ ok: true, demo: true, message: 'SMTP não configurado. Configure em Admin → Configurações.' });
+  }
 
   try {
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
+      port: parseInt(smtpPort),
+      secure: smtpSecure === 'true',
       auth: { user: smtpUser, pass: smtpPass },
     });
     await transporter.sendMail({
