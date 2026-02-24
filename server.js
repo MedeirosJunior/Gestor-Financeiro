@@ -93,8 +93,8 @@ const setConfig = async (secao, parametro, valor) => {
 /** Monta configurações SMTP (env vars > banco) com timeout e limpeza. */
 const getSmtpConfig = async () => {
   const host   = process.env.SMTP_HOST   || await getConfig('SMTP', 'HOST',   'smtp.gmail.com');
-  const port   = parseInt(process.env.SMTP_PORT   || await getConfig('SMTP', 'PORT',   '587'));
-  const secure = (process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'false')) === 'true';
+  const port   = parseInt(process.env.SMTP_PORT   || await getConfig('SMTP', 'PORT',   '465'));
+  const secure = (process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'true')) === 'true';
   const user   = process.env.SMTP_USER   || await getConfig('SMTP', 'USER',   '');
   // Remove espaços — senhas de app do Google são exibidas com espaços mas devem ser enviadas sem
   const pass   = (process.env.SMTP_PASS  || await getConfig('SMTP', 'PASS',   '')).replace(/\s/g, '');
@@ -109,8 +109,8 @@ const buildTransporter = (cfg) => nodemailer.createTransport({
   secure: cfg.secure,
   auth: { user: cfg.user, pass: cfg.pass },
   connectionTimeout: 15000,
-  greetingTimeout:   15000,
-  socketTimeout:     15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
 });
 
 // Middleware de autenticação JWT
@@ -358,18 +358,18 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Seed: valores padrão de SMTP (só insere se não existirem)
+    // Seed SMTP — INSERT OR REPLACE força atualização mesmo se já existir
     const smtpDefaults = [
-      ['SMTP', 'HOST', 'smtp.gmail.com'],
-      ['SMTP', 'PORT', '587'],
-      ['SMTP', 'SECURE', 'false'],
-      ['SMTP', 'USER', 'jrinfosistemas@gmail.com'],
-      ['SMTP', 'PASS', 'lofnzczmblcdemoc'],
-      ['SMTP', 'FROM', 'jrinfosistemas@gmail.com'],
+      ['SMTP', 'HOST',   'smtp.gmail.com'],
+      ['SMTP', 'PORT',   '465'],
+      ['SMTP', 'SECURE', 'true'],
+      ['SMTP', 'USER',   'jrinfosistemas@gmail.com'],
+      ['SMTP', 'PASS',   'lofn zczm bcld emoc'],
+      ['SMTP', 'FROM',   'jrinfosistemas@gmail.com'],
     ];
     for (const [secao, parametro, valor] of smtpDefaults) {
       await dbRun(
-        `INSERT OR IGNORE INTO configuracoes (secao, parametro, valor) VALUES (?, ?, ?)`,
+        `INSERT OR REPLACE INTO configuracoes (secao, parametro, valor) VALUES (?, ?, ?)`,
         [secao, parametro, valor]
       );
     }
