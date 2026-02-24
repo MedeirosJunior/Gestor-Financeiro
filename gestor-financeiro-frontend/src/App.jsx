@@ -342,16 +342,16 @@ const RECURRING_CAT_MAP = {
 
 // Lista de moedas suportadas
 const CURRENCIES = [
-  { code: 'BRL', symbol: 'R$', flag: '����', name: 'Real Brasileiro' },
-  { code: 'USD', symbol: '$', flag: '����', name: 'Dolar Americano' },
-  { code: 'EUR', symbol: '�', flag: '����', name: 'Euro' },
-  { code: 'GBP', symbol: '�', flag: '����', name: 'Libra Esterlina' },
-  { code: 'ARS', symbol: '$', flag: '����', name: 'Peso Argentino' },
-  { code: 'JPY', symbol: '�', flag: '����', name: 'Iene Japones' },
-  { code: 'CLP', symbol: '$', flag: '����', name: 'Peso Chileno' },
-  { code: 'MXN', symbol: '$', flag: '����', name: 'Peso Mexicano' },
-  { code: 'PYG', symbol: 'Gs', flag: '����', name: 'Guarani Paraguaio' },
-  { code: 'UYU', symbol: '$', flag: '����', name: 'Peso Uruguaio' },
+  { code: 'BRL', symbol: 'R$', flag: '🇧🇷', name: 'Real Brasileiro' },
+  { code: 'USD', symbol: '$', flag: '🇺🇸', name: 'Dolar Americano' },
+  { code: 'EUR', symbol: '€', flag: '🇪🇺', name: 'Euro' },
+  { code: 'GBP', symbol: '£', flag: '🇬🇧', name: 'Libra Esterlina' },
+  { code: 'ARS', symbol: '$', flag: '🇦🇷', name: 'Peso Argentino' },
+  { code: 'JPY', symbol: '¥', flag: '🇯🇵', name: 'Iene Japones' },
+  { code: 'CLP', symbol: '$', flag: '🇨🇱', name: 'Peso Chileno' },
+  { code: 'MXN', symbol: '$', flag: '🇲🇽', name: 'Peso Mexicano' },
+  { code: 'PYG', symbol: 'Gs', flag: '🇵🇾', name: 'Guarani Paraguaio' },
+  { code: 'UYU', symbol: '$', flag: '🇺🇾', name: 'Peso Uruguaio' },
 ];
 
 function App() {
@@ -1328,9 +1328,9 @@ function App() {
       id: 'exp-' + a.id + '-' + a.nextDue,
       type: a.overdue ? 'overdue' : 'due-soon',
       priority: a.overdue ? 0 : 1,
-      icon: a.overdue ? '��' : '��',
+      icon: a.overdue ? '🔴' : '🟢',
       title: a.overdue ? 'Despesa Vencida' : ('Vence em ' + a.daysUntilDue + ' dia(s)'),
-      body: a.description + ' � R$ ' + parseFloat(a.value).toFixed(2),
+      body: a.description + ' — R$ ' + parseFloat(a.value).toFixed(2),
       date: a.nextDue,
     }));
 
@@ -1350,7 +1350,7 @@ function App() {
             id: 'budget-' + b.id + '-' + currentMonth,
             type: pct >= 100 ? 'over-budget' : 'near-budget',
             priority: pct >= 100 ? 0 : 1,
-            icon: pct >= 100 ? '��' : '��',
+            icon: pct >= 100 ? '🔴' : '🟡',
             title: pct >= 100 ? 'Orcamento Estourado' : 'Orcamento Quase no Limite',
             body: b.category + ': R$ ' + spent.toFixed(2) + ' / R$ ' + limit.toFixed(2) + ' (' + pct.toFixed(0) + '%)',
             date: currentMonth,
@@ -1369,9 +1369,9 @@ function App() {
           id: 'goal-done-' + g.id,
           type: 'goal-achieved',
           priority: 2,
-          icon: '��',
+          icon: '🎯',
           title: 'Meta Alcancada!',
-          body: g.name + ' � R$ ' + curr.toFixed(2) + ' / R$ ' + target.toFixed(2),
+          body: g.name + ' — R$ ' + curr.toFixed(2) + ' / R$ ' + target.toFixed(2),
           date: g.deadline || '',
         });
       } else if (g.deadline) {
@@ -1381,9 +1381,9 @@ function App() {
             id: 'goal-overdue-' + g.id,
             type: 'goal-overdue',
             priority: 0,
-            icon: '��',
+            icon: '🎯',
             title: 'Meta com Prazo Vencido',
-            body: g.name + ' � ' + pct.toFixed(0) + '% concluida',
+            body: g.name + ' — ' + pct.toFixed(0) + '% concluida',
             date: g.deadline,
           });
         } else if (diff <= 30) {
@@ -1391,9 +1391,9 @@ function App() {
             id: 'goal-dl-' + g.id,
             type: 'goal-deadline',
             priority: 1,
-            icon: '��',
+            icon: '🎯',
             title: 'Meta vence em ' + diff + ' dia(s)',
-            body: g.name + ' � ' + pct.toFixed(0) + '% concluida',
+            body: g.name + ' — ' + pct.toFixed(0) + '% concluida',
             date: g.deadline,
           });
         }
@@ -1484,9 +1484,9 @@ function App() {
               <div className="currency-selector-wrap">
                 <button
                   className="currency-panel-btn"
-                  title="Painel de c�mbio"
+                  title="Painel de câmbio"
                   onClick={() => setCurrencyPanelOpen(v => !v)}
-                >��</button>
+                >💱</button>
                 <select
                   className="currency-select"
                   value={activeCurrency}
@@ -1504,7 +1504,7 @@ function App() {
                   onClick={() => setNotifOpen(o => !o)}
                   title="Notificacoes"
                 >
-                  ��
+                  💱
                   {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </button>
               </div>
@@ -1514,7 +1514,7 @@ function App() {
                 title={darkMode ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                 style={{ marginLeft: '6px' }}
               >
-                {darkMode ? '☀️' : '��'}
+                {darkMode ? '☀️' : '🌙'}
               </button>
             </div>
           </div>
@@ -1710,7 +1710,7 @@ function App() {
         <div className="notif-overlay" onClick={() => setCurrencyPanelOpen(false)}>
           <div className="notif-panel currency-panel" onClick={e => e.stopPropagation()}>
             <div className="notif-panel-header">
-              <span>�� Taxas de C�mbio (base: BRL)</span>
+              <span>💱 Taxas de Câmbio (base: BRL)</span>
               <button className="notif-close-btn" onClick={() => setCurrencyPanelOpen(false)}>✕</button>
             </div>
             {loadingRates ? (
@@ -1722,32 +1722,32 @@ function App() {
                     <div key={cur.code} className={'rate-item' + (activeCurrency === cur.code ? ' rate-active' : '')} onClick={() => setActiveCurrency(cur.code)}>
                       <span className="rate-flag">{cur.flag}</span>
                       <span className="rate-code">{cur.code}</span>
-                      <span className="rate-val">{exchangeRates[cur.code] ? exchangeRates[cur.code].toFixed(4) : '�'}</span>
+                      <span className="rate-val">{exchangeRates[cur.code] ? exchangeRates[cur.code].toFixed(4) : '?'}</span>
                     </div>
                   ))}
                 </div>
-                {ratesLastUpdate && <div className="rates-updated">�� Atualizado: {ratesLastUpdate}</div>}
+                {ratesLastUpdate && <div className="rates-updated">🕒 Atualizado: {ratesLastUpdate}</div>}
                 <div className="currency-mini-converter">
-                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>�� Conversor R�pido</h4>
+                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>🔄 Conversor Rápido</h4>
                   <CurrencyConverter currencies={CURRENCIES} exchangeRates={exchangeRates} activeCurrency={activeCurrency} />
                 </div>
               </>
             )}
             <div className="notif-panel-footer">
               <button className="notif-email-btn" onClick={fetchExchangeRates} disabled={loadingRates}>
-                {loadingRates ? '⏳ Atualizando...' : '�� Atualizar Taxas'}
+                {loadingRates ? '⏳ Atualizando...' : '🔄 Atualizar Taxas'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Painel de Notificacoes */}
+      {/* Painel de Notificações */}
       {notifOpen && (
         <div className="notif-overlay" onClick={() => setNotifOpen(false)}>
           <div className="notif-panel" onClick={e => e.stopPropagation()}>
             <div className="notif-panel-header">
-              <span>�� Notificacoes {allNotifications.length > 0 && '(' + allNotifications.length + ')'}</span>
+              <span>🔔 Notificações {allNotifications.length > 0 && '(' + allNotifications.length + ')'}</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {allNotifications.length > 0 && (
                   <button className="notif-mark-read" onClick={markAllRead}>✅ Lidas</button>
@@ -1756,7 +1756,7 @@ function App() {
               </div>
             </div>
             {allNotifications.length === 0 ? (
-              <div className="notif-empty">�� Nenhuma notificacao no momento</div>
+              <div className="notif-empty">✅ Nenhuma notificação no momento</div>
             ) : (
               <div className="notif-list">
                 {allNotifications.map(n => (
@@ -1776,7 +1776,7 @@ function App() {
                 className="notif-email-btn"
                 onClick={() => { setEmailInput(currentUser?.email || ''); setEmailModalOpen(true); }}
               >
-                �� Enviar resumo por e-mail
+                📧 Enviar resumo por e-mail
               </button>
             </div>
           </div>
@@ -1787,7 +1787,7 @@ function App() {
       {emailModalOpen && (
         <div className="modal-overlay" onClick={() => setEmailModalOpen(false)}>
           <div className="modal-content notif-email-modal" onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: '10px' }}>�� Enviar Resumo por E-mail</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '10px' }}>📧 Enviar Resumo por E-mail</h3>
             <p style={{ color: '#94a3b8', marginBottom: '14px', fontSize: '14px', lineHeight: 1.5 }}>
               Enviaremos um resumo das suas notificacoes ativas para:
             </p>
@@ -1802,7 +1802,7 @@ function App() {
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button className="cancel-btn" onClick={() => setEmailModalOpen(false)}>Cancelar</button>
               <button className="submit-btn" onClick={handleSendEmail} disabled={sendingEmail}>
-                {sendingEmail ? '⏳ Enviando...' : '�� Enviar'}
+                {sendingEmail ? '⏳ Enviando...' : '📤 Enviar'}
               </button>
             </div>
           </div>
@@ -1920,7 +1920,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
     email: '',
     password: ''
   });
-  // Recupera��o de senha
+  // Recuperação de senha
   const [forgotStep, setForgotStep] = useState(null); // null | 'email' | 'reset'
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotCode, setForgotCode] = useState('');
@@ -1996,12 +1996,12 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
           setForgotCode(data.token);
         }
         setForgotStep('reset');
-        toast.success(data.demo ? '⚠️ Modo demo: c�digo exibido na tela' : 'C�digo enviado para o e-mail!');
+        toast.success(data.demo ? '⚠️ Modo demo: código exibido na tela' : 'Código enviado para o e-mail!');
       } else {
-        toast.error(data.error || 'Erro ao solicitar recupera��o');
+        toast.error(data.error || 'Erro ao solicitar recuperação');
       }
     } catch {
-      toast.error('Erro de conex�o. Tente novamente.');
+      toast.error('Erro de conexão. Tente novamente.');
     } finally {
       setForgotLoading(false);
     }
@@ -2009,7 +2009,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
 
   const handleResetPassword = useCallback(async (e) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { toast.error('As senhas n�o coincidem.'); return; }
+    if (newPassword !== confirmPassword) { toast.error('As senhas não coincidem.'); return; }
     if (newPassword.length < 6) { toast.error('Senha deve ter pelo menos 6 caracteres.'); return; }
     setForgotLoading(true);
     try {
@@ -2020,17 +2020,17 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
       });
       const data = await resp.json();
       if (resp.ok) {
-        toast.success('Senha alterada com sucesso! Fa�a login.');
+        toast.success('Senha alterada com sucesso! Faça login.');
         setForgotStep(null);
         setForgotCode('');
         setNewPassword('');
         setConfirmPassword('');
         setDemoCode('');
       } else {
-        toast.error(data.error || 'C�digo inv�lido ou expirado');
+        toast.error(data.error || 'Código inválido ou expirado');
       }
     } catch {
-      toast.error('Erro de conex�o. Tente novamente.');
+      toast.error('Erro de conexão. Tente novamente.');
     } finally {
       setForgotLoading(false);
     }
@@ -2077,17 +2077,17 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               className="forgot-link"
               onClick={() => { setForgotStep('email'); setForgotEmail(credentials.email || ''); }}
             >
-              �� Esqueceu a senha?
+              🔑 Esqueceu a senha?
             </button>
           </div>
         </>)}
 
         {forgotStep === 'email' && (
           <form onSubmit={handleForgotRequest} className="forgot-form">
-            <h2>�� Recuperar Senha</h2>
-            <p className="forgot-info">Informe seu e-mail para receber o c�digo (v�lido por 15 min).</p>
+            <h2>🔑 Recuperar Senha</h2>
+            <p className="forgot-info">Informe seu e-mail para receber o código (válido por 15 min).</p>
             <div className="form-group">
-              <label>�� E-mail cadastrado:</label>
+              <label>📧 E-mail cadastrado:</label>
               <input
                 type="email"
                 value={forgotEmail}
@@ -2098,7 +2098,7 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               />
             </div>
             <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
-              Enviar C�digo
+              Enviar Código
             </ButtonSpinner>
             <button type="button" className="forgot-back-btn" onClick={() => setForgotStep(null)}>
               ← Voltar ao login
@@ -2108,14 +2108,14 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
 
         {forgotStep === 'reset' && (
           <form onSubmit={handleResetPassword} className="forgot-form">
-            <h2>�� Nova Senha</h2>
+            <h2>🔐 Nova Senha</h2>
             {demoCode && (
               <div className="demo-code-box">
-                ⚠️ Modo demo � C�digo: <strong>{demoCode}</strong>
+                ⚠️ Modo demo — Código: <strong>{demoCode}</strong>
               </div>
             )}
             <div className="form-group">
-              <label>�� C�digo recebido:</label>
+              <label>🔑 Código recebido:</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -2129,11 +2129,11 @@ const Login = React.memo(({ onLogin, loadingAuth, setLoadingAuth }) => {
               />
             </div>
             <div className="form-group">
-              <label>�� Nova senha:</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="M�nimo 6 caracteres" required minLength={6} />
+              <label>🔒 Nova senha:</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} />
             </div>
             <div className="form-group">
-              <label>�� Confirmar nova senha:</label>
+              <label>🔒 Confirmar nova senha:</label>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" required />
             </div>
             <ButtonSpinner type="submit" className="login-btn" loading={forgotLoading}>
@@ -2646,7 +2646,7 @@ const CategoryManagement = React.memo(({
 
 // Dashboard com resumo financeiro otimizado
 const Dashboard = React.memo(({ transactions, dueAlerts, budgets = [], goals = [], categories, wallets = [], fmtCurrency }) => {
-  // Fallback para BRL se fmtCurrency n�o dispon�vel
+  // Fallback para BRL se fmtCurrency não disponível
   const fmt = fmtCurrency || ((v) => 'R$ ' + v.toFixed(2));
   const now = new Date();
   const currentMonth = now.toISOString().slice(0, 7);
@@ -4431,7 +4431,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
           {reportPieData.length > 0 && (
             <div className="report-pie-section">
-              <h3>�� Distribui��o de Despesas</h3>
+              <h3>📊 Distribuição de Despesas</h3>
               <div className="report-pie-wrapper">
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
@@ -4511,7 +4511,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
 
           <div className="report-annual-charts">
             <div className="report-chart-card">
-              <h3>�� Entradas vs Despesas por M�s</h3>
+              <h3>📈 Entradas vs Despesas por Mês</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
@@ -4525,7 +4525,7 @@ function Relatorios({ transactions, loadingExport, setLoadingExport, categories,
               </ResponsiveContainer>
             </div>
             <div className="report-chart-card">
-              <h3>�� Saldo Mensal</h3>
+              <h3>💰 Saldo Mensal</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" />
