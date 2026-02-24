@@ -113,6 +113,63 @@ const buildTransporter = (cfg) => nodemailer.createTransport({
   socketTimeout: 15000,
 });
 
+/**
+ * Envia e-mail usando SendGrid HTTP API (porta 443, funciona no Render free).
+ * Retorna true se enviou, false se SENDGRID_API_KEY não está configurada.
+ * Lança erro se a API retornar falha.
+ */
+const sendViaSendGrid = async (to, subject, html) => {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return false; // não configurado, tenta próximo método
+
+  const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || 'jrinfosistemas@gmail.com';
+
+  const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: 'Gestor Financeiro' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    throw new Error(`SendGrid ${resp.status}: ${body}`);
+  }
+  return true;
+};
+
+/**
+ * Função principal de envio: tenta SendGrid (HTTP) → SMTP → lança erro.
+ * No Render free, SMTP sempre falha (ETIMEDOUT); use SENDGRID_API_KEY.
+ */
+const sendEmail = async ({ to, subject, html }) => {
+  // 1. Tenta SendGrid (API HTTP — funciona em qualquer hospedagem)
+  const sentViaSG = await sendViaSendGrid(to, subject, html);
+  if (sentViaSG) {
+    console.log(`📧 E-mail enviado via SendGrid para ${to}`);
+    return;
+  }
+
+  // 2. Tenta SMTP (pode falhar no Render free por bloqueio de porta)
+  const smtp = await getSmtpConfig();
+  console.log(`[SMTP] tentando ${smtp.user}@${smtp.host}:${smtp.port} secure=${smtp.secure}`);
+  const transporter = buildTransporter(smtp);
+  await transporter.sendMail({
+    from: `"Gestor Financeiro" <${smtp.from}>`,
+    to,
+    subject,
+    html,
+  });
+  console.log(`📧 E-mail enviado via SMTP para ${to}`);
+};
+
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -227,22 +284,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Diagnóstico SMTP (público, sem expor senha)
+// Diagnóstico de envio de e-mail (público, sem expor senha)
 app.get('/api/smtp-test', async (req, res) => {
+  const hasSendGrid = !!process.env.SENDGRID_API_KEY;
+  const smtp = await getSmtpConfig().catch(() => ({}));
+  const info = {
+    sendgrid: hasSendGrid ? '✅ SENDGRID_API_KEY configurada' : '❌ SENDGRID_API_KEY ausente (adicione no Render)',
+    smtp: { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, passLen: (smtp.pass || '').length },
+  };
+  if (hasSendGrid) {
+    return res.json({ ok: true, method: 'SendGrid HTTP', ...info });
+  }
   try {
-    const smtp = await getSmtpConfig();
-    const info = { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, passLen: smtp.pass.length };
     const transporter = buildTransporter(smtp);
     await transporter.verify();
-    res.json({ ok: true, message: 'SMTP conectado com sucesso!', config: info });
+    res.json({ ok: true, method: 'SMTP', ...info });
   } catch (err) {
-    const smtp = await getSmtpConfig().catch(() => ({}));
-    res.json({
-      ok: false,
-      error: err.message,
-      code: err.code,
-      config: { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, passLen: (smtp.pass||'').length }
-    });
+    res.json({ ok: false, method: 'SMTP', error: err.message, code: err.code, ...info });
   }
 });
 
@@ -766,32 +824,17 @@ app.post('/auth/forgot-password', async (req, res) => {
     const expiry = Date.now() + 15 * 60 * 1000;
     passwordResetTokens.set(email.toLowerCase().trim(), { token, expiry });
 
-    let smtpOk = false;
-    try {
-      const smtp = await getSmtpConfig();
-      console.log(`[SMTP] user=${smtp.user} host=${smtp.host} port=${smtp.port} secure=${smtp.secure} passLen=${smtp.pass.length}`);
-      if (smtp.user && smtp.pass) {
-        const transporter = buildTransporter(smtp);
-        await transporter.sendMail({
-          from: `"Gestor Financeiro" <${smtp.from}>`,
-          to: email,
-          subject: '🔑 Código de recuperação de senha — Gestor Financeiro',
-          html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`,
-        });
-        console.log(`📧 E-mail de reset enviado para ${email}`);
-        smtpOk = true;
-      }
-    } catch (smtpErr) {
-      console.error('SMTP erro (forgot-password):', smtpErr.code, smtpErr.message, smtpErr.response || '');
-    }
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;background:#f8fafc;padding:24px;"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;"><div style="background:#6366f1;padding:20px 24px;"><h1 style="color:#fff;margin:0;font-size:1.2rem;">💰 Gestor Financeiro</h1><p style="color:#c7d2fe;margin:4px 0 0;font-size:0.9rem;">Recuperação de Senha</p></div><div style="padding:24px;"><p style="color:#475569;">Olá, <strong>${user.name}</strong>!</p><p style="color:#475569;">Use o código abaixo para redefinir sua senha. Ele é válido por <strong>15 minutos</strong>.</p><div style="text-align:center;margin:24px 0;"><span style="font-size:2.5rem;font-weight:800;letter-spacing:8px;color:#6366f1;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${token}</span></div><p style="font-size:0.8rem;color:#94a3b8;">Se você não solicitou a recuperação, ignore este e-mail.</p></div></div></body></html>`;
 
-    if (!smtpOk) {
+    try {
+      await sendEmail({ to: email, subject: '🔑 Código de recuperação de senha — Gestor Financeiro', html });
+      return res.json({ ok: true });
+    } catch (emailErr) {
+      console.error('Envio de e-mail falhou (forgot-password):', emailErr.message);
       // Fallback demo: devolve o código para não bloquear o usuário
       console.log(`🔑 [RESET DEMO] Código para ${email}: ${token}`);
-      return res.json({ ok: true, demo: true, token, message: 'Código retornado (SMTP indisponível).' });
+      return res.json({ ok: true, demo: true, token, message: 'Código retornado (envio de e-mail indisponível).' });
     }
-
-    res.json({ ok: true });
   } catch (err) {
     console.error('Erro em forgot-password:', err.message);
     res.status(500).json({ error: 'Erro ao processar solicitação' });
@@ -1590,18 +1633,8 @@ app.post('/send-email-summary', authenticateToken, async (req, res) => {
   </div>
 </body></html>`;
 
-  // Ler configurações SMTP via helper (env vars > banco, strip espaços, timeout)
-  const smtp = await getSmtpConfig();
-
-  if (!smtp.user || !smtp.pass) {
-    console.log(`📧 [EMAIL DEMO] Para: ${email} | ${notifications.length} notificações — SMTP não configurado.`);
-    return res.json({ ok: true, demo: true, message: 'SMTP não configurado. Configure em Admin → Configurações.' });
-  }
-
   try {
-    const transporter = buildTransporter(smtp);
-    await transporter.sendMail({
-      from: `"Gestor Financeiro" <${smtp.from}>`,
+    await sendEmail({
       to: email,
       subject: `🔔 Resumo de Notificações — Gestor Financeiro (${notifications.length})`,
       html,
