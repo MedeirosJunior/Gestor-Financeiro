@@ -97,11 +97,13 @@ O sistema cria automaticamente um usuário administrador na primeira execução.
 
 ## 🔒 Segurança
 
-- Autenticação via JWT (JSON Web Token)
+- Autenticação via JWT (JSON Web Token) com `role` (`admin`/`user`) no payload
 - Senhas armazenadas com hash bcrypt
-- Transações isoladas por usuário
-- Verificação de propriedade antes de operações
-- Controle de acesso baseado em perfis
+- Todas as rotas de transações protegidas por `authenticateToken`
+- Rotas `/admin/*` com middleware `requireAdmin` (somente role `admin`)
+- Rate limiting no login: máximo 10 tentativas por IP a cada 15 minutos
+- Cabeçalhos HTTP de segurança via `helmet` (CSP, HSTS, X-Frame-Options etc.)
+- Transações isoladas por usuário com verificação de propriedade
 - Proteção contra exclusão de administradores
 
 ## 📊 Estrutura do Banco de Dados
@@ -132,10 +134,49 @@ MedeirosJunior
 
 ## 🎯 Próximas Funcionalidades
 
-- [ ] Metas financeiras
-- [ ] Backup automático
-- [ ] App mobile
 - [ ] Integração bancária
+- [ ] Dashboard de metas financeiras no frontend (backend já implementado)
+
+## 📱 App Mobile (React Native / Expo)
+
+O app mobile está disponível na pasta `gestor-financeiro-mobile/`.
+
+### Funcionalidades do App
+- Login com autenticação JWT
+- Dashboard com saldo, entradas e despesas do mês atual
+- Lançamento de receitas e despesas com categorias
+- Lista de transações com busca e filtros
+- Relatórios mensais com gráfico de barras e breakdown por categoria
+
+### Como rodar o app
+
+**Pré-requisitos:** Node.js 18+, Expo CLI, e o app [Expo Go](https://expo.dev/go) no celular.
+
+```bash
+cd gestor-financeiro-mobile
+npm install --legacy-peer-deps
+npx expo start
+```
+
+Escaneie o QR Code com o Expo Go (Android) ou a câmera (iOS).
+
+### Estrutura do app
+
+```
+gestor-financeiro-mobile/
+  App.js                          # Entrada da aplicação
+  app.json                        # Configuração Expo
+  src/
+    config/api.js                 # URL da API e constantes
+    context/AuthContext.js        # Autenticação JWT + authFetch
+    navigation/AppNavigator.js    # Navegação (Stack + Bottom Tabs)
+    screens/
+      LoginScreen.js              # Tela de login
+      DashboardScreen.js          # Resumo financeiro do mês
+      AddTransactionScreen.js     # Lançar receita ou despesa
+      TransactionsScreen.js       # Lista completa com busca
+      ReportsScreen.js            # Relatórios com gráficos
+```
 
 ## 🚀 Deploy
 

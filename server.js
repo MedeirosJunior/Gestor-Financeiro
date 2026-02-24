@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
@@ -271,8 +273,18 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Rate limiter para login: máximo 10 tentativas por 15 minutos por IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas de login. Aguarde 15 minutos e tente novamente.' }
+});
 
 // Rotas públicas (não precisam de autenticação)
 app.get('/api/health', (req, res) => {
@@ -316,9 +328,12 @@ const initializeDatabase = async () => {
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         name TEXT,
+        role TEXT NOT NULL DEFAULT 'user',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Migração: adicionar coluna role se não existir
+    await dbRun(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`).catch(() => { });
 
     // Criar tabela de transações
     await dbRun(`
@@ -476,11 +491,13 @@ const initializeDatabase = async () => {
       if (!adminExists) {
         const hashedAdminPwd = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
         await dbRun(
-          'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+          "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')",
           ['Administrador', ADMIN_EMAIL, hashedAdminPwd]
         );
         console.log('👑 Usuário admin criado com sucesso!');
       } else {
+        // Garante que o admin existente tenha role = 'admin'
+        await dbRun("UPDATE users SET role = 'admin' WHERE email = ?", [ADMIN_EMAIL]);
         console.log('👑 Usuário admin já existe');
       }
     } catch (adminError) {
@@ -527,7 +544,7 @@ initializeDatabase().catch(error => {
 });
 
 // Criar múltiplas transações em lote (parcelamento)
-app.post('/transactions/batch', async (req, res) => {
+app.post('/transactions/batch', authenticateToken, async (req, res) => {
   const { transactions: batch, wallet_id, userId } = req.body;
 
   if (!userId) return badRequest(res, ['"userId" é obrigatório']);
@@ -613,7 +630,7 @@ app.post('/transactions/import', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/transactions', async (req, res) => {
+app.get('/transactions', authenticateToken, async (req, res) => {
   const { userId, page, limit } = req.query;
 
   if (!userId || userId === 'undefined') {
@@ -657,7 +674,7 @@ app.get('/transactions', async (req, res) => {
   }
 });
 
-app.post('/transactions', async (req, res) => {
+app.post('/transactions', authenticateToken, async (req, res) => {
   const { type, description, category, value, date, userId, wallet_id } = req.body;
 
   const errors = [
@@ -688,7 +705,7 @@ app.post('/transactions', async (req, res) => {
   }
 });
 
-app.put('/transactions/:id', async (req, res) => {
+app.put('/transactions/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { type, description, category, value, date, userId, wallet_id } = req.body;
 
@@ -720,7 +737,7 @@ app.put('/transactions/:id', async (req, res) => {
   }
 });
 
-app.delete('/transactions/:id', async (req, res) => {
+app.delete('/transactions/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { userId } = req.query;
 
@@ -761,7 +778,7 @@ app.delete('/transactions/:id', async (req, res) => {
 });
 
 // Rotas de autenticação (públicas)
-app.post('/auth/login', async (req, res) => {
+app.post('/auth/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const errors = buildErrors([
@@ -773,7 +790,7 @@ app.post('/auth/login', async (req, res) => {
 
   try {
     const result = await dbGet(
-      'SELECT id, name, email, password FROM users WHERE email = ?',
+      'SELECT id, name, email, password, role FROM users WHERE email = ?',
       [email]
     );
 
@@ -787,7 +804,7 @@ app.post('/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: result.id, email: result.email, name: result.name },
+      { id: result.id, email: result.email, name: result.name, role: result.role || 'user' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -868,6 +885,15 @@ app.post('/auth/reset-password', async (req, res) => {
 
 // ============ ROTAS PROTEGIDAS (requerem JWT) ============
 app.use(authenticateToken);
+
+// Middleware para proteger rotas administrativas
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores.' });
+  }
+  next();
+};
+app.use('/admin', requireAdmin);
 
 // ============ ROTAS DE CONFIGURAÇÕES (admin) ============
 /** Lista todas as configurações de uma seção (ou todas). */
