@@ -92,13 +92,13 @@ const setConfig = async (secao, parametro, valor) => {
 
 /** Monta configurações SMTP (env vars > banco) com timeout e limpeza. */
 const getSmtpConfig = async () => {
-  const host   = process.env.SMTP_HOST   || await getConfig('SMTP', 'HOST',   'smtp.gmail.com');
-  const port   = parseInt(process.env.SMTP_PORT   || await getConfig('SMTP', 'PORT',   '465'));
+  const host = process.env.SMTP_HOST || await getConfig('SMTP', 'HOST', 'smtp.gmail.com');
+  const port = parseInt(process.env.SMTP_PORT || await getConfig('SMTP', 'PORT', '465'));
   const secure = (process.env.SMTP_SECURE || await getConfig('SMTP', 'SECURE', 'true')) === 'true';
-  const user   = process.env.SMTP_USER   || await getConfig('SMTP', 'USER',   '');
+  const user = process.env.SMTP_USER || await getConfig('SMTP', 'USER', '');
   // Remove espaços — senhas de app do Google são exibidas com espaços mas devem ser enviadas sem
-  const pass   = (process.env.SMTP_PASS  || await getConfig('SMTP', 'PASS',   '')).replace(/\s/g, '');
-  const from   = process.env.SMTP_FROM   || await getConfig('SMTP', 'FROM',   user);
+  const pass = (process.env.SMTP_PASS || await getConfig('SMTP', 'PASS', '')).replace(/\s/g, '');
+  const from = process.env.SMTP_FROM || await getConfig('SMTP', 'FROM', user);
   return { host, port, secure, user, pass, from };
 };
 
@@ -225,6 +225,25 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     database: 'SQLite'
   });
+});
+
+// Diagnóstico SMTP (público, sem expor senha)
+app.get('/api/smtp-test', async (req, res) => {
+  try {
+    const smtp = await getSmtpConfig();
+    const info = { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, passLen: smtp.pass.length };
+    const transporter = buildTransporter(smtp);
+    await transporter.verify();
+    res.json({ ok: true, message: 'SMTP conectado com sucesso!', config: info });
+  } catch (err) {
+    const smtp = await getSmtpConfig().catch(() => ({}));
+    res.json({
+      ok: false,
+      error: err.message,
+      code: err.code,
+      config: { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, passLen: (smtp.pass||'').length }
+    });
+  }
 });
 
 // Inicializar banco de dados SQLite
@@ -360,12 +379,12 @@ const initializeDatabase = async () => {
 
     // Seed SMTP — INSERT OR REPLACE força atualização mesmo se já existir
     const smtpDefaults = [
-      ['SMTP', 'HOST',   'smtp.gmail.com'],
-      ['SMTP', 'PORT',   '465'],
+      ['SMTP', 'HOST', 'smtp.gmail.com'],
+      ['SMTP', 'PORT', '465'],
       ['SMTP', 'SECURE', 'true'],
-      ['SMTP', 'USER',   'jrinfosistemas@gmail.com'],
-      ['SMTP', 'PASS',   'lofn zczm bcld emoc'],
-      ['SMTP', 'FROM',   'jrinfosistemas@gmail.com'],
+      ['SMTP', 'USER', 'jrinfosistemas@gmail.com'],
+      ['SMTP', 'PASS', 'lofn zczm bcld emoc'],
+      ['SMTP', 'FROM', 'jrinfosistemas@gmail.com'],
     ];
     for (const [secao, parametro, valor] of smtpDefaults) {
       await dbRun(
@@ -750,6 +769,7 @@ app.post('/auth/forgot-password', async (req, res) => {
     let smtpOk = false;
     try {
       const smtp = await getSmtpConfig();
+      console.log(`[SMTP] user=${smtp.user} host=${smtp.host} port=${smtp.port} secure=${smtp.secure} passLen=${smtp.pass.length}`);
       if (smtp.user && smtp.pass) {
         const transporter = buildTransporter(smtp);
         await transporter.sendMail({
@@ -762,7 +782,7 @@ app.post('/auth/forgot-password', async (req, res) => {
         smtpOk = true;
       }
     } catch (smtpErr) {
-      console.error('SMTP erro (forgot-password):', smtpErr.message);
+      console.error('SMTP erro (forgot-password):', smtpErr.code, smtpErr.message, smtpErr.response || '');
     }
 
     if (!smtpOk) {
